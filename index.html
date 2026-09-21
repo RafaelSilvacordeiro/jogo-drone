@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IFMT · Fundamentos de Drones</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Cinzel:wght@600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+          mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+          medieval: ["Cinzel", "serif"],
+        },
+      },
+    },
+  };
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
+
+<style>
+  html, body { margin: 0; padding: 0; background: #f5ecd7; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState } = React;
+
+const TABS = [
+  { num: "01", code: "COMPONENTS", label: "Oficina de Componentes", desc: "Peças do drone identificadas por foto e diagrama técnico.", cor: "#8b6f2a" },
+  { num: "02", code: "CALIBRATION", label: "Preparação & Calibração", desc: "Passo a passo de montagem e calibração do IMU/bússola.", cor: "#4a7a3a" },
+  { num: "03", code: "PRE-FLIGHT", label: "Checklist Pré-Voo", desc: "Lista funcional de segurança antes da decolagem.", cor: "#b8761f" },
+  { num: "04", code: "REGULATION", label: "Legislação & Regras", desc: "Normas ANAC/DECEA com avisos visuais de conformidade.", cor: "#6a4a8a" },
+  { num: "05", code: "DIAGNOSTICS", label: "Diagnóstico de Erros", desc: "Guia rápido de problemas comuns e soluções.", cor: "#a83a2a" },
+  { num: "06", code: "SIMULATOR", label: "Simulador de Voo 3D", desc: "Pilote um drone virtual com física realista. Use W/S, A/D, Q/E e as setas.", cor: "#2a7a8a" },
+];
+
+const CORES = {
+  fundo: "#f5ecd7", painel: "#fbf5e4",
+  texto: "#3a2e1f", textoSuave: "#6b5a3f", textoFraco: "#9a8a6a",
+  dourado: "#c9a227", douradoEscuro: "#8b6f2a",
+};
+
+// ============================================================
+// ABA 1: OFICINA DE COMPONENTES — só cards limpos
+// ============================================================
+
+const COMPONENTS = [
+  {
+    code: "PWR-01",
+    title: "Motores Brushless",
+    text: "Convertem energia elétrica em rotação mecânica sem uso de escovas, reduzindo atrito e desgaste. São classificados pelo padrão KV (RPM por volt aplicado). O drone típico tem 4 motores (quadricóptero)."
+  },
+  {
+    code: "AER-02",
+    title: "Hélices",
+    text: "Convertem a rotação dos motores em empuxo (força que levanta o drone). Sempre usadas em pares complementares (CW/CCW) para cancelar o torque entre si e manter o voo estável."
+  },
+  {
+    code: "IMG-03",
+    title: "Gimbal / Câmera",
+    text: "Estabilizador motorizado que mantém a câmera nivelada mesmo com o drone se movendo. Compensa vibrações e inclinações, permitindo vídeos suaves e fotos nítidas."
+  },
+  {
+    code: "GND-04",
+    title: "Trem de Pouso",
+    text: "Pernas que sustentam o drone quando ele está no chão. Protegem a câmera e mantêm os motores longe da poeira. Em alguns modelos são retráteis (recolhem durante o voo)."
+  },
+  {
+    code: "PWR-05",
+    title: "Bateria LiPo",
+    text: "Fonte de energia de alta descarga. A capacidade (mAh) determina a autonomia e a taxa de descarga (C) define a potência máxima disponível. Fica encaixada na parte traseira do drone."
+  },
+];
+
+function ComponentCard({ code, title, text }) {
+  return (
+    <div
+      className="relative rounded-2xl transition-all hover:shadow-md"
+      style={{
+        border: "2px solid #d4c4a0",
+        backgroundColor: "#fbf5e4",
+        boxShadow: "0 2px 8px rgba(90,70,40,0.08)",
+        padding: "24px",
+      }}
+    >
+      <div className="font-mono text-xs font-bold mb-2" style={{ color: "#8b6f2a", letterSpacing: "0.08em" }}>
+        {code}
+      </div>
+      <div className="text-lg font-bold mb-3" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>
+        {title}
+      </div>
+      <p className="text-sm leading-relaxed" style={{ color: "#6b5a3f" }}>
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function FotoDrone() {
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3" style={{ width: "100%", maxWidth: "620px" }}>
+      <div className="relative mx-auto rounded-3xl overflow-hidden"
+        style={{ width: "100%", aspectRatio: "1 / 1", border: "3px solid #c9a227", backgroundColor: "#ffffff", boxShadow: "0 8px 24px rgba(201,162,39,0.15)" }}>
+        {!imgError ? (
+          <img src="imagens/drone.jpg" alt="Foto do drone completo" onError={() => setImgError(true)}
+            className="w-full h-full object-contain" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 text-center">
+            <span className="text-base font-bold" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>Coloque uma foto do drone</span>
+            <span className="text-sm" style={{ color: "#6b5a3f" }}>Salve como <b>imagens/drone.jpg</b></span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OficinaComponentes() {
+  return (
+    <div className="flex flex-col gap-8" style={{ maxWidth: "900px" }}>
+      <FotoDrone />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {COMPONENTS.map((c) => <ComponentCard key={c.code} {...c} />)}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ABA 2: PREPARAÇÃO & CALIBRAÇÃO
+// ============================================================
+const STEPS = [
+  { num: "01", title: "Montagem das Hélices (CW / CCW)", text: "Cada braço do drone recebe um tipo específico de hélice. Trocar a posição inverte o sentido de rotação e desestabiliza o voo.",
+    points: ["Hélices CW (sentido horário) vão nos motores com rosca própria, geralmente identificados por um anel ou adesivo preto.", "Hélices CCW (sentido anti-horário) vão nos motores complementares, cancelando o torque gerado pelas CW.", "Aperte a porca/trava com firmeza, mas sem forçar a rosca — hélice solta é uma das principais causas de queda."] },
+  { num: "02", title: "Ligação (Bind) do Rádio com o Drone", text: "O vínculo entre o rádio transmissor e o receptor do drone precisa ser feito antes de qualquer teste com hélices instaladas.",
+    points: ["Ligue o drone SEM as hélices instaladas para o primeiro teste de vínculo.", "Coloque o rádio em modo bind e aproxime-o da controladora conforme o manual do fabricante.", "Confirme o vínculo pelo LED do receptor (normalmente muda de piscante para sólido).", "Teste os comandos no monitor de canais do software antes de instalar as hélices."] },
+  { num: "03", title: "Calibração da Bússola (Compass) e do IMU", text: "Sensores mal calibrados são a causa mais comum de deriva (drift) e voo instável logo após a decolagem.",
+    points: ["Posicione o drone em uma superfície plana, longe de estruturas metálicas, veículos ou celulares.", "Inicie a calibração da bússola pelo software de configuração (ex.: Mission Planner, Betaflight Configurator).", "Gire a aeronave lentamente nos 3 eixos (X, Y, Z) conforme a indicação do software.", "Para o IMU, mantenha o drone parado e nivelado durante todo o processo de calibração do giroscópio/acelerômetro.", "Aguarde a confirmação de sucesso antes de prosseguir — nunca decole com aviso de calibração pendente."] },
+];
+
+function StepCard({ num, title, text, points }) {
+  return (
+    <div className="relative p-6 flex gap-5 rounded-2xl"
+      style={{ border: "2px solid #d4c4a0", backgroundColor: "#fbf5e4", boxShadow: "0 2px 8px rgba(90,70,40,0.08)" }}>
+      <div className="font-mono text-2xl font-bold shrink-0" style={{ color: "#8b6f2a" }}>{num}</div>
+      <div className="flex flex-col gap-3">
+        <div className="text-lg font-bold" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>{title}</div>
+        <p className="text-sm leading-relaxed" style={{ color: "#6b5a3f" }}>{text}</p>
+        <ul className="flex flex-col gap-2 mt-1">
+          {points.map((p, i) => (
+            <li key={i} className="text-sm leading-relaxed flex gap-2" style={{ color: "#4a3f2a" }}>
+              <span style={{ color: "#8b6f2a", fontWeight: "bold" }}>›</span><span>{p}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function PreparacaoCalibracao() {
+  return <div className="flex flex-col gap-5" style={{ maxWidth: "700px" }}>{STEPS.map((s) => <StepCard key={s.num} {...s} />)}</div>;
+}
+
+// ============================================================
+// ABA 3: CHECKLIST PRÉ-VOO
+// ============================================================
+const CHECKLIST_ITEMS = [
+  "Verificar aperto das hélices e parafusos estruturais",
+  "Checar tensão das células da bateria LiPo (mínimo 3.7V por célula)",
+  "Confirmar vínculo (bind) do rádio com o receptor",
+  "Verificar zona de exclusão aérea (NOTAM / SARPAS)",
+  "Calibrar sensores — bússola e IMU",
+  "Conferir sinal de GPS estável (número mínimo de satélites)",
+];
+
+function ChecklistRow({ label, checked, onToggle, isLast }) {
+  const handleKeyDown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } };
+  return (
+    <div onClick={onToggle} onKeyDown={handleKeyDown} role="checkbox" aria-checked={checked} tabIndex={0}
+      className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none transition-colors rounded-lg"
+      style={{ borderBottom: isLast ? "none" : `1px solid #e8dbb8`, backgroundColor: checked ? "#eaf4e2" : "transparent" }}>
+      <span className="flex items-center justify-center shrink-0 rounded-lg transition-all"
+        style={{ width: "26px", height: "26px", border: `2px solid ${checked ? "#4a7a3a" : "#b8a478"}`, backgroundColor: checked ? "#4a7a3a" : "#fbf5e4" }}>
+        {checked && <svg width="14" height="11" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+      </span>
+      <span className="text-sm font-medium" style={{ color: checked ? "#9a8a6a" : "#3a2e1f", textDecoration: checked ? "line-through" : "none" }}>{label}</span>
+    </div>
+  );
+}
+
+function ChecklistPreVoo() {
+  const [checked, setChecked] = useState(() => CHECKLIST_ITEMS.map(() => false));
+  const toggle = (i) => setChecked((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+  const allChecked = checked.every(Boolean);
+  const pendingCount = checked.filter((v) => !v).length;
+  const totalCheck = checked.filter(Boolean).length;
+
+  return (
+    <div className="flex flex-col gap-6" style={{ maxWidth: "680px" }}>
+      <div className="relative px-6 py-5 rounded-2xl"
+        style={{ border: `3px solid ${allChecked ? "#4a7a3a" : "#c9a227"}`, backgroundColor: allChecked ? "#eaf4e2" : "#fdf4d8" }}>
+        <span className="text-base font-bold" style={{ color: allChecked ? "#4a7a3a" : "#8b6f2a", fontFamily: "Cinzel, serif" }}>
+          {allChecked ? "TUDO PRONTO! VOO AUTORIZADO" : "ATENÇÃO: AINDA FALTAM ITENS"}
+        </span>
+        {!allChecked && <div className="text-sm mt-2" style={{ color: "#6b5a3f" }}>{pendingCount} {pendingCount === 1 ? "item pendente" : "itens pendentes"} · {totalCheck}/{CHECKLIST_ITEMS.length} completos</div>}
+      </div>
+      <div className="flex flex-col rounded-2xl overflow-hidden" style={{ border: "2px solid #d4c4a0", backgroundColor: "#fbf5e4", boxShadow: "0 2px 8px rgba(90,70,40,0.08)" }}>
+        {CHECKLIST_ITEMS.map((label, i) => <ChecklistRow key={i} label={label} checked={checked[i]} onToggle={() => toggle(i)} isLast={i === CHECKLIST_ITEMS.length - 1} />)}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ABA 4: LEGISLAÇÃO & REGRAS
+// ============================================================
+function Badge({ type, children }) {
+  const isDanger = type === "danger";
+  const cor = isDanger ? "#a83a2a" : "#4a7a3a";
+  const bg = isDanger ? "#f4e0dc" : "#eaf4e2";
+  return <span className="inline-flex items-center text-xs px-3 py-1 font-semibold rounded-full" style={{ color: cor, backgroundColor: bg, border: `1.5px solid ${cor}40` }}>{isDanger ? "✗" : "✓"} {children}</span>;
+}
+
+function RuleCard({ code, title, text, badges }) {
+  return (
+    <div className="relative p-6 rounded-2xl" style={{ border: "2px solid #d4c4a0", backgroundColor: "#fbf5e4", boxShadow: "0 2px 8px rgba(90,70,40,0.08)" }}>
+      <div className="font-mono text-xs font-bold mb-2" style={{ color: "#8b6f2a", letterSpacing: "0.08em" }}>{code}</div>
+      <div className="text-lg font-bold mb-3" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>{title}</div>
+      <p className="text-sm leading-relaxed mb-4" style={{ color: "#6b5a3f" }}>{text}</p>
+      <div className="flex flex-wrap gap-2">{badges.map((b, i) => <Badge key={i} type={b.type}>{b.label}</Badge>)}</div>
+    </div>
+  );
+}
+
+const RULES = [
+  { code: "REG-01 // DECEA", title: "Altura Máxima de Voo", text: "A altura máxima permitida para operação sem autorização especial é de 120 metros (400 pés) acima do nível do solo (AGL), conforme regulamentação do DECEA.", badges: [{ type: "ok", label: "ATÉ 120M PERMITIDO" }, { type: "danger", label: "ACIMA DE 120M PROIBIDO" }] },
+  { code: "REG-02 // DISTÂNCIA", title: "Distância Mínima de Pessoas", text: "É obrigatório manter distância mínima de 30 metros de pessoas não envolvidas diretamente na operação, salvo em áreas controladas ou com autorização específica.", badges: [{ type: "danger", label: "MENOS DE 30M PROIBIDO" }] },
+  { code: "REG-03 // CADASTRO", title: "Cadastro e Autorização de Voo", text: "Drones acima de 250g devem ser cadastrados no SISANT (ANAC). Para voos em áreas controladas ou próximas a aeródromos, é obrigatória a solicitação prévia via SARPAS (DECEA).", badges: [{ type: "ok", label: "COM SISANT: PERMITIDO" }, { type: "danger", label: "SEM CADASTRO: PROIBIDO" }] },
+  { code: "REG-04 // BATERIAS LIPO", title: "Armazenamento e Transporte de Baterias", text: "Baterias LiPo que não serão utilizadas em breve devem ser armazenadas em modo Storage (aproximadamente 3.8V por célula), em bolsa própria à prova de fogo e local ventilado.", badges: [{ type: "ok", label: "MODO STORAGE RECOMENDADO" }, { type: "danger", label: "CARGA TOTAL EM REPOUSO: RISCO DE INCÊNDIO" }] },
+];
+
+function LegislacaoRegras() {
+  return (
+    <div className="flex flex-col gap-5" style={{ maxWidth: "700px" }}>
+      <div className="text-xs font-semibold tracking-wide uppercase" style={{ color: "#9a8a6a" }}>Guia de bolso · Legislação brasileira para aeronaves não tripuladas</div>
+      {RULES.map((r) => <RuleCard key={r.code} {...r} />)}
+    </div>
+  );
+}
+
+// ============================================================
+// ABA 5: DIAGNÓSTICO DE ERROS
+// ============================================================
+const PROBLEMS = [
+  { id: "puxando", label: "Drone puxando para o lado", solucao: "Verifique o balanceamento das hélices e confira se todas estão bem apertadas e sem trincas. Se persistir, recalibre o acelerômetro (nível) com o drone sobre uma superfície plana.", seguranca: "Não tente compensar o desvio apenas com o rádio em pleno voo — pouse imediatamente e inspecione a aeronave no solo." },
+  { id: "nao-arma", label: "Motores não armam", solucao: "Confira se o rádio está vinculado (bind) e com os failsafes configurados. Verifique se a controladora não está travada por calibração pendente ou nível de bateria crítico.", seguranca: "Nunca insista em armar forçando o stick — investigue a causa antes de tentar novamente, sempre com as hélices desmontadas durante o teste." },
+  { id: "gps", label: "Perda de sinal de GPS", solucao: "Aguarde alguns segundos em área aberta para uma nova aquisição de satélites. Verifique se a antena GPS não está obstruída por metal ou fiação próxima.", seguranca: "Em modos de voo autônomo (RTL/Auto), a perda de GPS pode causar comportamento imprevisível — mude para modo manual (Stabilize/Angle) imediatamente." },
+  { id: "bateria", label: "Bateria esquentando", solucao: "Pouse o drone imediatamente e desconecte a bateria. Aquecimento excessivo geralmente indica célula desbalanceada, descarga acima da taxa C nominal ou dano interno.", seguranca: "Nunca carregue ou manuseie uma bateria LiPo quente — deixe esfriar em local seguro, longe de materiais inflamáveis, e observe se há inchaço." },
+];
+
+function ProblemButton({ label, isActive, onClick }) {
+  return (
+    <button onClick={onClick} className="px-4 py-4 text-left text-sm font-semibold rounded-2xl transition-all"
+      style={{ border: `2px solid ${isActive ? "#8b6f2a" : "#d4c4a0"}`, backgroundColor: isActive ? "#8b6f2a15" : "#fbf5e4", color: isActive ? "#8b6f2a" : "#4a3f2a", boxShadow: isActive ? "0 4px 12px rgba(139,111,42,0.15)" : "0 2px 4px rgba(90,70,40,0.06)" }}>
+      {label}
+    </button>
+  );
+}
+
+function DiagnosticoErros() {
+  const [activeId, setActiveId] = useState(PROBLEMS[0].id);
+  const active = PROBLEMS.find((p) => p.id === activeId);
+  return (
+    <div className="flex flex-col gap-6" style={{ maxWidth: "700px" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {PROBLEMS.map((p) => <ProblemButton key={p.id} {...p} isActive={p.id === activeId} onClick={() => setActiveId(p.id)} />)}
+      </div>
+      <div className="relative p-6 rounded-2xl" style={{ border: "2px solid #d4c4a0", backgroundColor: "#fbf5e4", boxShadow: "0 4px 12px rgba(90,70,40,0.1)" }}>
+        <div className="text-lg font-bold mb-5" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>{active.label}</div>
+        <div className="flex flex-col gap-5">
+          <div className="p-4 rounded-xl" style={{ backgroundColor: "#eaf0f8", borderLeft: "4px solid #2a7a8a" }}>
+            <div className="text-xs font-bold uppercase mb-2" style={{ color: "#2a7a8a", letterSpacing: "0.05em" }}>Solução imediata</div>
+            <p className="text-sm leading-relaxed" style={{ color: "#4a3f2a" }}>{active.solucao}</p>
+          </div>
+          <div className="p-4 rounded-xl" style={{ backgroundColor: "#f4e0dc", borderLeft: "4px solid #a83a2a" }}>
+            <div className="text-xs font-bold uppercase mb-2" style={{ color: "#a83a2a", letterSpacing: "0.05em" }}>Cuidados de segurança</div>
+            <p className="text-sm leading-relaxed" style={{ color: "#4a3f2a" }}>{active.seguranca}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ABA 6: SIMULADOR DE VOO 3D
+// ============================================================
+function SimuladorVoo() {
+  return (
+    <div className="flex flex-col gap-4" style={{ maxWidth: "100%" }}>
+      <div className="relative rounded-3xl overflow-hidden"
+        style={{ border: "3px solid #c9a227", backgroundColor: "#fbf5e4", aspectRatio: "16 / 9", width: "100%", boxShadow: "0 8px 24px rgba(201,162,39,0.2)" }}>
+        <iframe src="ifmt-drone-jogo.html" title="Simulador de Voo 3D" style={{ width: "100%", height: "100%", border: "none", display: "block" }} allow="fullscreen" />
+      </div>
+      <div className="relative px-6 py-5 rounded-2xl" style={{ border: "2px solid #d4c4a0", backgroundColor: "#fbf5e4", boxShadow: "0 2px 8px rgba(90,70,40,0.08)" }}>
+        <div className="font-bold text-sm mb-3" style={{ color: "#8b6f2a", letterSpacing: "0.05em", fontFamily: "Cinzel, serif" }}>CONTROLES DO JOGO</div>
+        <div className="flex flex-wrap gap-3">
+          {[{ tecla: "A / D", acao: "Girar no eixo" }, { tecla: "W / S", acao: "Subir / Descer" }, { tecla: "↑ ↓ ← →", acao: "Mover" }, { tecla: "Mouse", acao: "Orbitar câmera" }, { tecla: "Scroll", acao: "Zoom" }, { tecla: "R", acao: "Reiniciar" }].map((c, i) => (
+            <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: "#f0e4c8", border: "1px solid #d4c4a0" }}>
+              <span className="font-mono text-xs font-bold px-2 py-1 rounded" style={{ backgroundColor: "#8b6f2a", color: "white" }}>{c.tecla}</span>
+              <span className="text-xs font-medium" style={{ color: "#4a3f2a" }}>{c.acao}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 p-3 rounded-xl text-sm" style={{ backgroundColor: "#fdf4d8", border: "1px solid #e8c96a", color: "#6b4f1a" }}>Clique dentro da janela do jogo antes de usar o teclado. Colete todos os anéis da fase e desvie dos morcegos.</div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// APP PRINCIPAL
+// ============================================================
+function DroneEduHUD() {
+  const [activeTab, setActiveTab] = useState(0);
+  const tab = TABS[activeTab];
+
+  return (
+    <div className="w-full h-screen flex font-sans overflow-hidden" style={{ backgroundColor: CORES.fundo, color: CORES.texto }}>
+      <aside className="flex flex-col justify-between shrink-0" style={{ width: "290px", backgroundColor: "#fbf5e4", borderRight: "2px solid #d4c4a0" }}>
+        <div>
+          <div className="px-6 py-6" style={{ borderBottom: "2px solid #d4c4a0", background: "linear-gradient(135deg, #f0e4c8 0%, #e8dbb8 100%)" }}>
+            <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "#8b6f2a" }}>IFMT · UAV</div>
+            <div className="text-lg font-extrabold" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>Fundamentos de Drones</div>
+            <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-xl" style={{ backgroundColor: "#fbf5e4", border: `1.5px solid ${tab.cor}40` }}>
+              <span className="text-xs font-bold" style={{ color: tab.cor }}>MÓDULO ATIVO · {tab.code}</span>
+            </div>
+          </div>
+          <nav className="px-3 py-4 flex flex-col gap-2">
+            {TABS.map((t, i) => {
+              const isActive = i === activeTab;
+              return (
+                <button key={t.code} onClick={() => setActiveTab(i)} className="flex items-center gap-3 px-4 py-3 text-left rounded-2xl transition-all"
+                  style={{ backgroundColor: isActive ? `${t.cor}18` : "transparent", border: `2px solid ${isActive ? t.cor : "transparent"}`, boxShadow: isActive ? `0 4px 12px ${t.cor}20` : "none" }}>
+                  <span className="font-mono text-xs font-bold shrink-0" style={{ color: isActive ? t.cor : "#9a8a6a" }}>{t.num}</span>
+                  <span className="text-sm" style={{ color: isActive ? "#3a2e1f" : "#6b5a3f", fontWeight: isActive ? 700 : 500 }}>{t.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+        <div className="px-6 py-4 text-xs flex flex-col gap-1" style={{ borderTop: "2px solid #d4c4a0", color: "#9a8a6a" }}>
+          <div className="flex justify-between"><span>BUILD</span><span className="font-semibold">v2.8.0-limpo</span></div>
+          <div className="flex justify-between"><span>STATUS</span><span className="font-bold" style={{ color: "#4a7a3a" }}>● ONLINE</span></div>
+        </div>
+      </aside>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="flex items-center justify-between px-8 shrink-0" style={{ height: "72px", borderBottom: "2px solid #d4c4a0", backgroundColor: "#fbf5e4" }}>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold" style={{ color: "#9a8a6a" }}>MOD-{tab.num}</span>
+            <span style={{ color: "#9a8a6a" }}>/</span>
+            <span className="text-base font-bold" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>{tab.label}</span>
+          </div>
+          <div className="flex items-center gap-5 text-xs font-semibold" style={{ color: "#6b5a3f" }}>
+            <span className="px-3 py-1.5 rounded-lg" style={{ backgroundColor: "#e8f0f8" }}>ALT <b style={{ color: "#2a7a8a" }}>000.0m</b></span>
+            <span className="px-3 py-1.5 rounded-lg" style={{ backgroundColor: "#eaf4e2" }}>HDG <b style={{ color: "#4a7a3a" }}>000°</b></span>
+            <span className="px-3 py-1.5 rounded-lg" style={{ backgroundColor: "#fdf4d8" }}>SPD <b style={{ color: "#8b6f2a" }}>0.0m/s</b></span>
+          </div>
+        </header>
+        <main className="flex-1 overflow-auto px-10 py-10" style={{ background: "linear-gradient(135deg, #f5ecd7 0%, #ede2c8 100%)" }}>
+          <div className={activeTab === 5 ? "w-full" : "max-w-3xl"}>
+            <div className="text-sm font-bold uppercase tracking-wider mb-3" style={{ color: tab.cor }}>{tab.num} // {tab.code}</div>
+            <h1 className="text-4xl font-extrabold mb-3" style={{ color: "#3a2e1f", fontFamily: "Cinzel, serif" }}>{tab.label}</h1>
+            <p className="text-base mb-10 leading-relaxed" style={{ color: "#6b5a3f", maxWidth: "600px" }}>{tab.desc}</p>
+            {activeTab === 0 ? <OficinaComponentes /> : activeTab === 1 ? <PreparacaoCalibracao /> : activeTab === 2 ? <ChecklistPreVoo /> : activeTab === 3 ? <LegislacaoRegras /> : activeTab === 4 ? <DiagnosticoErros /> : <SimuladorVoo />}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<DroneEduHUD />);
+</script>
+</body>
+</html>
