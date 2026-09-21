@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Drone: A Quest for the Ring</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=MedievalSharp&display=swap" rel="stylesheet" />
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #1a1410;
+    font-family: 'Cinzel', serif;
+    color: #f5e6c8;
+    user-select: none;
+  }
+  canvas { display: block; }
+
+  .hud-panel {
+    position: fixed;
+    background: linear-gradient(180deg, rgba(60,45,25,0.88) 0%, rgba(35,25,15,0.92) 100%);
+    border: 2px solid #8a6a30;
+    border-radius: 6px;
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.3), 0 8px 30px rgba(0,0,0,0.6), inset 0 0 40px rgba(212,175,55,0.08);
+    backdrop-filter: blur(6px);
+    padding: 14px 20px;
+    z-index: 10;
+  }
+  .hud-panel::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
+  #hud-vidas {
+    top: 20px; left: 20px;
+    display: flex; align-items: center; gap: 14px;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 16px;
+    color: #d4af37;
+  }
+  #hud-vidas .label { font-weight: 600; text-shadow: 0 0 8px rgba(212,175,55,0.5); }
+  #hud-vidas .coracoes { display: flex; gap: 6px; font-size: 22px; line-height: 1; }
+  #hud-vidas .coracao {
+    color: #c8102e;
+    text-shadow: 0 0 8px rgba(200,16,46,0.6);
+    transition: all 0.3s;
+    filter: drop-shadow(0 0 4px rgba(200,16,46,0.8));
+  }
+  #hud-vidas .coracao.vazio { color: #3a2a20; text-shadow: none; filter: none; opacity: 0.4; }
+
+  #hud-aneis {
+    top: 20px; right: 20px;
+    display: flex; align-items: center; gap: 14px;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 16px;
+    color: #d4af37;
+  }
+  #hud-aneis .label { font-weight: 600; text-shadow: 0 0 8px rgba(212,175,55,0.5); }
+  #hud-aneis .icone {
+    font-size: 24px; color: #ffd700;
+    filter: drop-shadow(0 0 8px rgba(255,215,0,0.7));
+    animation: girar-icone 4s linear infinite;
+  }
+  @keyframes girar-icone { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+  #hud-aneis .contador {
+    font-size: 20px; color: #ffd700; font-weight: 700;
+    text-shadow: 0 0 12px rgba(255,215,0,0.8);
+    min-width: 60px; text-align: right;
+  }
+
+  #hud-timer {
+    top: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Cinzel', serif;
+    font-size: 28px; font-weight: 700;
+    color: #d4af37; letter-spacing: 0.1em;
+    text-shadow: 0 0 12px rgba(212,175,55,0.6);
+    padding: 10px 24px;
+  }
+  #hud-timer.perigo {
+    color: #ff3b3b;
+    text-shadow: 0 0 15px rgba(255,59,59,0.9), 0 0 30px rgba(255,59,59,0.5);
+    animation: pulsarPerigo 0.5s ease-in-out infinite;
+  }
+  @keyframes pulsarPerigo {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.08); }
+  }
+  #hud-timer .icone-relogio { font-size: 22px; filter: drop-shadow(0 0 6px rgba(212,175,55,0.8)); }
+  #hud-timer.perigo .icone-relogio { filter: drop-shadow(0 0 8px rgba(255,59,59,0.9)); }
+
+  #hud-pontos {
+    top: 90px; left: 20px;
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Cinzel', serif; font-size: 18px; font-weight: 700;
+    color: #d4af37; padding: 10px 18px;
+  }
+  #hud-pontos .label {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 14px; font-weight: 400; letter-spacing: 0.05em;
+  }
+  #hud-pontos .valor { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.7); }
+
+  #hud-fase {
+    top: 150px; left: 20px;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 13px; color: #d4af37; padding: 8px 16px;
+    letter-spacing: 0.1em;
+  }
+
+  #hud-hora {
+    top: 90px; right: 20px;
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 13px; color: #d4af37;
+    padding: 8px 14px;
+  }
+  #hud-hora .icone { font-size: 18px; }
+
+  #hud-powerups {
+    top: 200px; left: 20px;
+    display: flex; flex-direction: column; gap: 6px;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 12px; padding: 10px 14px;
+    min-width: 180px;
+  }
+  #hud-powerups.vazio { display: none; }
+  #hud-powerups .titulo {
+    color: #d4af37; letter-spacing: 0.1em;
+    font-size: 10px; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .powerup-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 8px; border-radius: 4px;
+    background: rgba(20,15,10,0.6);
+    border: 1px solid currentColor;
+  }
+  .powerup-badge .icone { font-size: 16px; }
+  .powerup-badge .nome { flex: 1; }
+  .powerup-badge .tempo { font-family: 'Courier New', monospace; font-weight: 700; }
+
+  #minimap {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    width: 180px; height: 180px;
+    border: 2px solid #8a6a30;
+    border-radius: 6px;
+    background: rgba(20,15,10,0.85);
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.3), 0 8px 30px rgba(0,0,0,0.6);
+    z-index: 10; overflow: hidden;
+  }
+  #minimap canvas { width: 100%; height: 100%; display: block; }
+
+  #hud-controles {
+    position: fixed;
+    bottom: 20px; left: 20px;
+    padding: 12px 18px;
+    background: rgba(20,15,10,0.7);
+    border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 6px;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 13px; color: #b8a882;
+    line-height: 1.7; z-index: 10;
+  }
+  #hud-controles kbd {
+    display: inline-block; padding: 1px 7px; margin: 0 2px;
+    background: rgba(212,175,55,0.15);
+    border: 1px solid rgba(212,175,55,0.5);
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px; color: #d4af37; font-weight: 700;
+  }
+
+  #tela-inicial {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(80,40,10,0.85) 0%, rgba(10,5,0,0.98) 100%);
+    z-index: 100; text-align: center; padding: 40px;
+    overflow-y: auto; transition: opacity 0.8s;
+  }
+  #tela-inicial.esconder { opacity: 0; pointer-events: none; }
+  #tela-inicial .titulo {
+    font-family: 'Cinzel', serif; font-size: 56px; font-weight: 900;
+    color: #d4af37; letter-spacing: 0.05em;
+    text-shadow: 0 0 20px rgba(212,175,55,0.6), 0 0 40px rgba(212,175,55,0.4), 0 0 80px rgba(212,175,55,0.2);
+    margin-bottom: 4px;
+    animation: brilhar 4s ease-in-out infinite;
+  }
+  @keyframes brilhar {
+    0%, 100% { text-shadow: 0 0 20px rgba(212,175,55,0.6), 0 0 40px rgba(212,175,55,0.4), 0 0 80px rgba(212,175,55,0.2); }
+    50% { text-shadow: 0 0 30px rgba(212,175,55,0.9), 0 0 60px rgba(212,175,55,0.6), 0 0 120px rgba(212,175,55,0.4); }
+  }
+  #tela-inicial .subtitulo {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 18px; color: #b8a882; letter-spacing: 0.15em;
+    margin-bottom: 20px; text-transform: uppercase;
+  }
+  #tela-inicial .frase {
+    font-style: italic; color: #8a7550;
+    font-size: 14px; max-width: 600px;
+    margin-bottom: 30px; line-height: 1.7;
+  }
+  #tela-inicial .recorde-info {
+    font-family: 'Cinzel', serif; font-size: 16px; color: #d4af37;
+    margin-bottom: 30px; padding: 10px 24px;
+    background: rgba(20,15,10,0.6);
+    border: 1px solid rgba(212,175,55,0.4); border-radius: 6px;
+  }
+  #tela-inicial .recorde-info b {
+    color: #ffd700; font-size: 20px;
+    text-shadow: 0 0 10px rgba(255,215,0,0.6);
+  }
+  #tela-inicial .niveis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px; max-width: 900px; width: 100%;
+    margin-bottom: 30px;
+  }
+  .nivel-card {
+    position: relative; padding: 24px 20px;
+    background: linear-gradient(180deg, rgba(60,45,25,0.75) 0%, rgba(35,25,15,0.9) 100%);
+    border: 2px solid #8a6a30; border-radius: 8px;
+    cursor: pointer; transition: all 0.3s;
+    text-align: center; font-family: 'Cinzel', serif;
+  }
+  .nivel-card:hover {
+    border-color: #d4af37;
+    box-shadow: 0 0 25px rgba(212,175,55,0.5);
+    transform: translateY(-3px);
+  }
+  .nivel-card .numero {
+    font-size: 13px; color: #b8a882;
+    letter-spacing: 0.15em; margin-bottom: 6px; text-transform: uppercase;
+  }
+  .nivel-card .nome {
+    font-size: 20px; color: #d4af37; font-weight: 700;
+    margin-bottom: 10px; text-shadow: 0 0 8px rgba(212,175,55,0.4);
+  }
+  .nivel-card .descricao {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 13px; color: #a89878;
+    margin-bottom: 10px; min-height: 34px;
+  }
+  .nivel-card .bioma-tag {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 12px; padding: 4px 10px;
+    border-radius: 10px; margin-bottom: 10px;
+    display: inline-block;
+  }
+  .nivel-card .dificuldade {
+    display: inline-flex; align-items: center;
+    gap: 3px; font-size: 14px;
+  }
+  .nivel-card .dificuldade span {
+    color: #ffd700; filter: drop-shadow(0 0 4px rgba(255,215,0,0.6));
+  }
+  .nivel-card .dificuldade span.vazio { color: #3a2a20; filter: none; }
+  .nivel-card .estrelas-conquistadas {
+    display: flex; justify-content: center;
+    gap: 4px; margin-top: 10px; font-size: 18px;
+  }
+  .nivel-card .estrelas-conquistadas span {
+    color: #3a2a20; filter: none; transition: all 0.3s;
+  }
+  .nivel-card .estrelas-conquistadas span.ganha {
+    color: #ffd700; filter: drop-shadow(0 0 6px rgba(255,215,0,0.9));
+  }
+  .nivel-card .recorde-mini {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 11px; color: #8a7550; margin-top: 8px;
+  }
+  #tela-inicial .rodape {
+    font-size: 11px; color: #6a5a3a;
+    font-family: 'MedievalSharp', cursive;
+    letter-spacing: 0.1em; margin-top: 20px;
+  }
+
+  #tela-fim-fase {
+    position: fixed; inset: 0;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(80,40,10,0.92) 0%, rgba(10,5,0,0.98) 100%);
+    z-index: 100; text-align: center; padding: 40px;
+  }
+  #tela-fim-fase.mostrar { display: flex; }
+  #tela-fim-fase h1 {
+    font-family: 'Cinzel', serif; font-size: 48px; font-weight: 900;
+    color: #d4af37; letter-spacing: 0.05em;
+    text-shadow: 0 0 30px rgba(212,175,55,0.7);
+    margin-bottom: 8px;
+    animation: brilhar 2s ease-in-out infinite;
+  }
+  #tela-fim-fase .subtitulo {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 18px; color: #b8a882; margin-bottom: 20px;
+  }
+  #fim-estrelas {
+    display: flex; gap: 16px; margin-bottom: 24px; justify-content: center;
+  }
+  #fim-estrelas span {
+    font-size: 64px; color: #3a2a20;
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform: scale(0.5); filter: none;
+  }
+  #fim-estrelas span.ganha {
+    color: #ffd700;
+    filter: drop-shadow(0 0 20px rgba(255,215,0,0.9)) drop-shadow(0 0 40px rgba(255,215,0,0.5));
+    transform: scale(1);
+  }
+  #tela-fim-fase .estatisticas {
+    display: flex; gap: 30px; margin-bottom: 30px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  #tela-fim-fase .stat {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 14px 24px; background: rgba(20,15,10,0.6);
+    border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 6px; min-width: 130px;
+  }
+  #tela-fim-fase .stat .label {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 12px; color: #b8a882;
+    letter-spacing: 0.1em; margin-bottom: 6px; text-transform: uppercase;
+  }
+  #tela-fim-fase .stat .valor {
+    font-family: 'Cinzel', serif; font-size: 28px;
+    font-weight: 700; color: #ffd700;
+    text-shadow: 0 0 12px rgba(255,215,0,0.7);
+  }
+  #tela-fim-fase .stat .valor.tempo {
+    color: #5aa9e6;
+    text-shadow: 0 0 12px rgba(90,169,230,0.7);
+  }
+  #tela-fim-fase .botoes {
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+  }
+  #tela-fim-fase .btn {
+    font-family: 'Cinzel', serif; font-size: 15px; font-weight: 700;
+    letter-spacing: 0.15em; color: #d4af37;
+    background: linear-gradient(180deg, rgba(212,175,55,0.25) 0%, rgba(212,175,55,0.08) 100%);
+    border: 2px solid #d4af37; padding: 14px 32px;
+    cursor: pointer; transition: all 0.3s;
+    text-transform: uppercase; border-radius: 4px;
+  }
+  #tela-fim-fase .btn:hover {
+    background: rgba(212,175,55,0.4);
+    box-shadow: 0 0 30px rgba(212,175,55,0.5);
+    transform: translateY(-2px);
+  }
+  #tela-fim-fase .btn.secundario {
+    color: #b8a882; border-color: #8a6a30;
+    background: rgba(20,15,10,0.6);
+  }
+  #tela-fim-fase .btn.secundario:hover {
+    background: rgba(40,30,20,0.8);
+    box-shadow: 0 0 20px rgba(138,106,48,0.4);
+    border-color: #b8a882;
+  }
+
+  #tela-gameover {
+    position: fixed; inset: 0;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(80,10,10,0.9) 0%, rgba(5,0,0,0.98) 100%);
+    z-index: 100; text-align: center; padding: 40px;
+  }
+  #tela-gameover.mostrar { display: flex; }
+  #tela-gameover h1 {
+    font-family: 'Cinzel', serif; font-size: 56px; font-weight: 900;
+    color: #c8102e; letter-spacing: 0.05em;
+    text-shadow: 0 0 30px rgba(200,16,46,0.7), 0 0 60px rgba(200,16,46,0.4);
+    margin-bottom: 16px;
+  }
+  #tela-gameover .subtitulo {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 20px; color: #f5e6c8;
+    margin-bottom: 12px; letter-spacing: 0.1em;
+  }
+  #tela-gameover .frase {
+    font-style: italic; color: #b8a882; font-size: 15px;
+    max-width: 500px; margin: 24px 0 40px; line-height: 1.7;
+  }
+  #tela-gameover .btn {
+    font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700;
+    letter-spacing: 0.15em; color: #c8102e;
+    background: linear-gradient(180deg, rgba(200,16,46,0.25) 0%, rgba(200,16,46,0.08) 100%);
+    border: 2px solid #c8102e; padding: 14px 40px;
+    cursor: pointer; transition: all 0.3s; text-transform: uppercase;
+  }
+  #tela-gameover .btn:hover {
+    background: rgba(200,16,46,0.4);
+    box-shadow: 0 0 30px rgba(200,16,46,0.5);
+  }
+
+  #flash-dano {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(200,16,46,0.8) 100%);
+    opacity: 0; pointer-events: none; z-index: 50;
+    transition: opacity 0.1s;
+  }
+  #flash-dano.ativo { opacity: 1; transition: opacity 0.05s; }
+
+  #toast {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    font-family: 'Cinzel', serif; font-size: 36px; font-weight: 700;
+    color: #ffd700;
+    text-shadow: 0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,215,0,0.6), 0 0 80px rgba(255,215,0,0.4);
+    letter-spacing: 0.1em; opacity: 0;
+    pointer-events: none; z-index: 60;
+    text-align: center;
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  #toast.mostrar { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  #flash-powerup {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 55;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #flash-powerup.ativo { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- HUD -->
+<div id="hud-vidas" class="hud-panel">
+  <span class="label">Vidas</span>
+  <div class="coracoes" id="coracoes">
+    <span class="coracao">❤</span>
+    <span class="coracao">❤</span>
+    <span class="coracao">❤</span>
+  </div>
+</div>
+
+<div id="hud-pontos" class="hud-panel">
+  <span class="label">PONTOS</span>
+  <span class="valor" id="pontos-valor">0</span>
+</div>
+
+<div id="hud-fase" class="hud-panel">
+  FASE <span id="fase-numero">1</span> — <span id="fase-nome">Valfenda</span>
+</div>
+
+<div id="hud-hora" class="hud-panel">
+  <span class="icone" id="hora-icone">☀️</span>
+  <span id="hora-texto">Meio-dia</span>
+</div>
+
+<div id="hud-powerups" class="hud-panel vazio"></div>
+
+<div id="hud-timer" class="hud-panel">
+  <span class="icone-relogio">⏱</span>
+  <span id="timer-valor">90</span>s
+</div>
+
+<div id="hud-aneis" class="hud-panel">
+  <span class="label">Anéis</span>
+  <span class="icone">◯</span>
+  <span class="contador"><span id="aneis-coletados">0</span>/<span id="aneis-totais">10</span></span>
+</div>
+
+<div id="minimap">
+  <canvas id="minimap-canvas" width="360" height="360"></canvas>
+</div>
+
+<div id="hud-controles">
+  <div><kbd>A</kbd><kbd>D</kbd> — Girar no eixo</div>
+  <div><kbd>W</kbd><kbd>S</kbd> — Subir / Descer</div>
+  <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> — Mover</div>
+  <div>🖱️ Arrastar — Orbitar câmera</div>
+  <div><kbd>R</kbd> — Reiniciar fase</div>
+</div>
+
+<!-- TELAS -->
+<div id="tela-inicial">
+  <h1 class="titulo">Drone</h1>
+  <p class="subtitulo">A Quest for the Ring</p>
+  <p class="frase">"Um anel para a todos governar, um anel para encontrá-los,<br>um anel para a todos trazer e na escuridão aprisioná-los."</p>
+  <div class="recorde-info">
+    🏆 RECORDE: <b id="recorde-total">0</b> pontos
+  </div>
+  <div class="niveis-grid" id="niveis-grid"></div>
+  <p class="rodape">Escolha uma fase para começar · Use fones de ouvido</p>
+</div>
+
+<div id="tela-fim-fase">
+  <h1 id="fim-titulo">Fase Completa!</h1>
+  <p class="subtitulo" id="fim-subtitulo"></p>
+  <div id="fim-estrelas">
+    <span id="estrela-1">★</span>
+    <span id="estrela-2">★</span>
+    <span id="estrela-3">★</span>
+  </div>
+  <div class="estatisticas">
+    <div class="stat"><span class="label">Pontos</span><span class="valor" id="fim-pontos">0</span></div>
+    <div class="stat"><span class="label">Tempo Restante</span><span class="valor tempo" id="fim-tempo">0s</span></div>
+    <div class="stat"><span class="label">Anéis</span><span class="valor" id="fim-aneis">0/0</span></div>
+    <div class="stat"><span class="label">Vidas</span><span class="valor" id="fim-vidas">❤❤❤</span></div>
+  </div>
+  <div class="botoes">
+    <button class="btn secundario" onclick="voltarMenu()">◀ Menu</button>
+    <button class="btn" id="btn-proxima-fase">Próxima Fase ▶</button>
+  </div>
+</div>
+
+<div id="tela-gameover">
+  <h1 id="gameover-titulo">Você Foi Derrotado</h1>
+  <p class="subtitulo" id="gameover-subtitulo"></p>
+  <p class="frase" id="gameover-frase">"A escuridão não pode ser vencida pela força,<br>mas pela coragem de tentar novamente."</p>
+  <div class="botoes">
+    <button class="btn secundario" onclick="voltarMenu()">◀ Menu</button>
+    <button class="btn" id="btn-tentar-novamente">Tentar Novamente</button>
+  </div>
+</div>
+
+<div id="flash-dano"></div>
+<div id="flash-powerup"></div>
+<div id="toast"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ============================================================
+// BIOMAS
+// ============================================================
+const BIOMAS = {
+  FLORESTA: { nome: "Floresta", tag: "🌲 Floresta", tagCor: "#4a8a3a", terrenoCor: 0x4a6b3a, fogCor: 0xddaa77, fogPerto: 80, fogLonge: 400, arvores: 'arvores', corArvore: 0x2a5a2a, corTronco: 0x4a2a18 },
+  DESERTO: { nome: "Deserto", tag: "🏜️ Deserto", tagCor: "#c9a86a", terrenoCor: 0xd9b878, fogCor: 0xf0d8a8, fogPerto: 100, fogLonge: 450, arvores: 'cactos', corArvore: 0x4a8a3a, corTronco: 0x6a8a2a },
+  NEVE: { nome: "Neve", tag: "❄️ Neve", tagCor: "#c8e8ff", terrenoCor: 0xe8f0f8, fogCor: 0xd0e8f8, fogPerto: 60, fogLonge: 320, arvores: 'pinheiros', corArvore: 0x2a4a2a, corTronco: 0x4a3a28 },
+};
+
+// ============================================================
+// FASES — só morcegos
+// ============================================================
+const FASES = [
+  { numero: 1, nome: "Valfenda", descricao: "Morcegos à espreita", aneis: 10, morcegos: 3, tempo: 100, dificuldade: 1, bioma: 'FLORESTA', horaInicial: 12, numPowerups: 4 },
+  { numero: 2, nome: "Deserto de Harad", descricao: "Enxame no calor", aneis: 12, morcegos: 5, tempo: 105, dificuldade: 2, bioma: 'DESERTO', horaInicial: 15, numPowerups: 5 },
+  { numero: 3, nome: "Montanhas Nebulosas", descricao: "O céu está infestado", aneis: 14, morcegos: 7, tempo: 110, dificuldade: 3, bioma: 'NEVE', horaInicial: 9, numPowerups: 6 },
+];
+
+// ============================================================
+// POWER-UPS
+// ============================================================
+const TIPOS_POWERUP = {
+  TURBO:  { icone: '⚡', nome: 'Turbo',  cor: 0xffaa00, corCSS: '#ffaa00', duracao: 5 },
+  ESCUDO: { icone: '🛡️', nome: 'Escudo', cor: 0x00aaff, corCSS: '#00aaff', duracao: 8 },
+  IMA:    { icone: '🧲', nome: 'Ímã',    cor: 0xaa44ff, corCSS: '#aa44ff', duracao: 10 },
+  TEMPO:  { icone: '⏱️', nome: 'Tempo',  cor: 0x00ff88, corCSS: '#00ff88', duracao: 0 },
+};
+
+// ============================================================
+// ESTADO
+// ============================================================
+const ESTADO = {
+  rodando: false, faseAtual: 0, vidas: 3, aneisColetados: 0, aneisTotais: 10,
+  pontos: 0, tempoRestante: 100, tempoMaximo: 100,
+  invulneravel: false, tempoInvulneravel: 0, powerupsAtivos: {},
+  hora: 12, duracaoDia: 150,
+};
+
+let PROGRESSO = { fasesCompletas: [], recordesPorFase: {}, estrelasPorFase: {}, recordeTotal: 0 };
+const STORAGE_KEY = 'drone_quest_progresso_v7';
+
+function carregarProgresso() {
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) PROGRESSO = { ...PROGRESSO, ...JSON.parse(s) }; } catch (e) {}
+}
+function salvarProgresso() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(PROGRESSO)); } catch (e) {} }
+carregarProgresso();
+
+// ============================================================
+// ÁUDIO
+// ============================================================
+let ctxAudio = null;
+function inicializarAudio() {
+  if (!ctxAudio) ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctxAudio.state === 'suspended') ctxAudio.resume();
+}
+function tocarNota(f, d, t = 'sine', v = 0.15) {
+  if (!ctxAudio) return;
+  const osc = ctxAudio.createOscillator();
+  const g = ctxAudio.createGain();
+  osc.type = t;
+  osc.frequency.setValueAtTime(f, ctxAudio.currentTime);
+  g.gain.setValueAtTime(v, ctxAudio.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctxAudio.currentTime + d);
+  osc.connect(g); g.connect(ctxAudio.destination);
+  osc.start(ctxAudio.currentTime); osc.stop(ctxAudio.currentTime + d);
+}
+function somColetarAnel() { tocarNota(880, 0.15, 'sine', 0.12); setTimeout(() => tocarNota(1320, 0.25, 'sine', 0.1), 80); }
+function somDano() { tocarNota(180, 0.4, 'sawtooth', 0.2); tocarNota(120, 0.5, 'square', 0.1); }
+function somVitoria() { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tocarNota(f, 0.3, 'sine', 0.12), i * 120)); }
+function somGameOver() { [440, 392, 330, 262, 220].forEach((f, i) => setTimeout(() => tocarNota(f, 0.4, 'sawtooth', 0.1), i * 180)); }
+function somTempo() { tocarNota(660, 0.1, 'sine', 0.08); }
+function somAlerta() { tocarNota(440, 0.15, 'square', 0.08); }
+function somPowerupTurbo() { tocarNota(600, 0.1, 'sawtooth', 0.1); setTimeout(() => tocarNota(900, 0.15, 'sawtooth', 0.12), 60); setTimeout(() => tocarNota(1200, 0.2, 'sawtooth', 0.1), 120); }
+function somPowerupEscudo() { tocarNota(400, 0.2, 'sine', 0.12); setTimeout(() => tocarNota(600, 0.3, 'sine', 0.1), 100); }
+function somPowerupIma() { tocarNota(880, 0.15, 'sine', 0.1); setTimeout(() => tocarNota(1100, 0.15, 'sine', 0.1), 80); setTimeout(() => tocarNota(1400, 0.2, 'sine', 0.1), 160); }
+function somPowerupTempo() { tocarNota(1320, 0.1, 'sine', 0.12); setTimeout(() => tocarNota(1760, 0.15, 'sine', 0.1), 80); }
+function somMorcego() { tocarNota(800 + Math.random() * 400, 0.08, 'square', 0.04); }
+
+let motorOsc = null, motorGain = null;
+function iniciarSomMotor() {
+  if (!ctxAudio || motorOsc) return;
+  motorOsc = ctxAudio.createOscillator();
+  motorGain = ctxAudio.createGain();
+  motorOsc.type = 'sawtooth';
+  motorOsc.frequency.setValueAtTime(80, ctxAudio.currentTime);
+  motorGain.gain.setValueAtTime(0.03, ctxAudio.currentTime);
+  motorOsc.connect(motorGain); motorGain.connect(ctxAudio.destination);
+  motorOsc.start();
+}
+function atualizarSomMotor(velocidade) {
+  if (!motorOsc || !motorGain) return;
+  const freq = 80 + Math.min(velocidade, 50) * 2.4;
+  motorOsc.frequency.setTargetAtTime(freq, ctxAudio.currentTime, 0.1);
+  const vol = 0.02 + Math.min(velocidade, 50) * 0.001;
+  motorGain.gain.setTargetAtTime(vol, ctxAudio.currentTime, 0.1);
+}
+function pararSomMotor() {
+  if (motorOsc) { try { motorOsc.stop(); } catch (e) {} motorOsc = null; }
+  if (motorGain) motorGain = null;
+}
+
+// ============================================================
+// CENA
+// ============================================================
+const cena = new THREE.Scene();
+cena.fog = new THREE.Fog(0xddaa77, 80, 400);
+
+const materialCeu = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: {
+    corTopo: { value: new THREE.Color(0x3a5a8a) },
+    corMeio: { value: new THREE.Color(0xd4a878) },
+    corBaixo: { value: new THREE.Color(0xe8c898) },
+    noite: { value: 0.0 },
+  },
+  vertexShader: `varying vec3 vPosicao; void main() { vPosicao = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform vec3 corTopo; uniform vec3 corMeio; uniform vec3 corBaixo; uniform float noite;
+    varying vec3 vPosicao;
+    void main() {
+      float h = normalize(vPosicao).y;
+      float t = clamp(h * 0.5 + 0.5, 0.0, 1.0);
+      vec3 cor;
+      if (t < 0.5) cor = mix(corBaixo, corMeio, t * 2.0);
+      else cor = mix(corMeio, corTopo, (t - 0.5) * 2.0);
+      if (noite > 0.5 && h > 0.1) {
+        float estrela = step(0.9985, fract(sin(dot(vPosicao.xy, vec2(12.9898, 78.233))) * 43758.5453));
+        cor += estrela * noite * 0.8;
+      }
+      gl_FragColor = vec4(cor, 1.0);
+    }
+  `,
+});
+cena.add(new THREE.Mesh(new THREE.SphereGeometry(800, 32, 16), materialCeu));
+
+const sol = new THREE.Mesh(new THREE.SphereGeometry(20, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
+cena.add(sol);
+const luzSol = new THREE.PointLight(0xffdd88, 1.2, 800);
+cena.add(luzSol);
+
+const lua = new THREE.Mesh(new THREE.SphereGeometry(15, 16, 12), new THREE.MeshBasicMaterial({ color: 0xe8e8ff }));
+cena.add(lua);
+const luzLua = new THREE.PointLight(0xaaccff, 0.6, 800);
+cena.add(luzLua);
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 1200);
+const renderer = new THREE.WebGLRenderer({ antialias: false }); // ⚡ ANTIALIAS DESLIGADO (performance)
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25)); // ⚡ pixel ratio mais baixo
+renderer.shadowMap.enabled = false; // ⚡ SOMBRAS DESLIGADAS (maior ganho de performance)
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+const luzAmbiente = new THREE.AmbientLight(0xffd8a0, 0.6);
+cena.add(luzAmbiente);
+const luzHemi = new THREE.HemisphereLight(0xaaccff, 0x4a3020, 0.7);
+cena.add(luzHemi);
+
+// ============================================================
+// TERRENO
+// ============================================================
+function ruido(x, z) {
+  return (
+    Math.sin(x * 0.05) * Math.cos(z * 0.05) * 4 +
+    Math.sin(x * 0.12 + 1.3) * Math.cos(z * 0.1 + 0.7) * 2 +
+    Math.sin(x * 0.02 - 0.5) * Math.cos(z * 0.03 + 1.8) * 6
+  );
+}
+const TAMANHO_TERRENO = 400;
+const geometriaTerreno = new THREE.PlaneGeometry(TAMANHO_TERRENO, TAMANHO_TERRENO, 60, 60); // ⚡ menos segmentos
+geometriaTerreno.rotateX(-Math.PI / 2);
+const posicoes = geometriaTerreno.attributes.position;
+for (let i = 0; i < posicoes.count; i++) posicoes.setY(i, ruido(posicoes.getX(i), posicoes.getZ(i)));
+geometriaTerreno.computeVertexNormals();
+const materialTerreno = new THREE.MeshStandardMaterial({ color: 0x4a6b3a, roughness: 0.95, metalness: 0.02 });
+const terreno = new THREE.Mesh(geometriaTerreno, materialTerreno);
+cena.add(terreno);
+function alturaTerreno(x, z) { return ruido(x, z); }
+
+// ============================================================
+// VEGETAÇÃO (menos objetos)
+// ============================================================
+const vegetacaoGrupo = new THREE.Group();
+cena.add(vegetacaoGrupo);
+
+function limparVegetacao() {
+  while (vegetacaoGrupo.children.length > 0) vegetacaoGrupo.remove(vegetacaoGrupo.children[0]);
+}
+
+function criarArvore(x, z, escala, cfg) {
+  const g = new THREE.Group();
+  const tronco = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * escala, 0.45 * escala, 2.5 * escala, 5), new THREE.MeshStandardMaterial({ color: cfg.corTronco, roughness: 1 }));
+  tronco.position.y = 1.25 * escala; g.add(tronco);
+  const matCopa = new THREE.MeshStandardMaterial({ color: cfg.corArvore, roughness: 0.9 });
+  const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.8 * escala, 3.5 * escala, 6), matCopa);
+  c1.position.y = 3.5 * escala; g.add(c1);
+  const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.4 * escala, 2.8 * escala, 6), matCopa);
+  c2.position.y = 5.2 * escala; g.add(c2);
+  g.position.set(x, alturaTerreno(x, z), z);
+  g.rotation.y = Math.random() * Math.PI * 2;
+  vegetacaoGrupo.add(g);
+}
+
+function criarCacto(x, z, escala) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x4a8a3a, roughness: 0.9 });
+  const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * escala, 0.5 * escala, 3.5 * escala, 6), mat);
+  corpo.position.y = 1.75 * escala; g.add(corpo);
+  const braco1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * escala, 0.25 * escala, 1.5 * escala, 6), mat);
+  braco1.position.set(0.7 * escala, 1.5 * escala, 0); braco1.rotation.z = Math.PI / 3; g.add(braco1);
+  g.position.set(x, alturaTerreno(x, z), z);
+  g.rotation.y = Math.random() * Math.PI * 2;
+  vegetacaoGrupo.add(g);
+}
+
+function criarPinheiro(x, z, escala) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x2a4a2a, roughness: 0.9 });
+  const tronco = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * escala, 0.4 * escala, 1.5 * escala, 5), new THREE.MeshStandardMaterial({ color: 0x4a3a28 }));
+  tronco.position.y = 0.75 * escala; g.add(tronco);
+  for (let i = 0; i < 2; i++) { // ⚡ 2 cones em vez de 3
+    const cone = new THREE.Mesh(new THREE.ConeGeometry((1.5 - i * 0.3) * escala, 2.5 * escala, 6), mat);
+    cone.position.y = (2 + i * 2) * escala; g.add(cone);
+  }
+  g.position.set(x, alturaTerreno(x, z), z);
+  g.rotation.y = Math.random() * Math.PI * 2;
+  vegetacaoGrupo.add(g);
+}
+
+function gerarVegetacao(bioma) {
+  limparVegetacao();
+  const cfg = BIOMAS[bioma];
+  const quantidade = 60; // ⚡ era 100
+  for (let i = 0; i < quantidade; i++) {
+    const x = (Math.random() - 0.5) * 380;
+    const z = (Math.random() - 0.5) * 380;
+    if (Math.hypot(x, z) < 15) continue;
+    const escala = 0.8 + Math.random() * 0.8;
+    if (cfg.arvores === 'arvores') criarArvore(x, z, escala, cfg);
+    else if (cfg.arvores === 'cactos') criarCacto(x, z, escala);
+    else if (cfg.arvores === 'pinheiros') criarPinheiro(x, z, escala);
+  }
+}
+
+// ============================================================
+// DRONE
+// ============================================================
+const drone = new THREE.Group();
+cena.add(drone);
+const droneInterno = new THREE.Group();
+drone.add(droneInterno);
+
+const heliceRefs = [];
+const emissoresFumaca = [];
+const luzesMotor = [];
+const luzesNavegacao = [];
+let luzGimbal = null, luzAuraInterna = null, luzAntena = null, luzPowerup = null;
+
+const matCorpo = new THREE.MeshStandardMaterial({ color: 0x2a2f36, metalness: 0.85, roughness: 0.35 });
+const matCorpoClaro = new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.85, roughness: 0.25 });
+const matCorpoEscuro = new THREE.MeshStandardMaterial({ color: 0x14171c, metalness: 0.9, roughness: 0.3 });
+const matDourado = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.15, emissive: 0x6a5010, emissiveIntensity: 0.35 });
+const matBraco = new THREE.MeshStandardMaterial({ color: 0x1a1d22, metalness: 0.8, roughness: 0.35 });
+const matMotor = new THREE.MeshStandardMaterial({ color: 0x33373d, metalness: 0.95, roughness: 0.12 });
+const matAnelMotor = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.2, emissive: 0x6a5010, emissiveIntensity: 0.4 });
+const matHelice = new THREE.MeshStandardMaterial({ color: 0x0d0f12, transparent: true, opacity: 0.75, side: THREE.DoubleSide, metalness: 0.4, roughness: 0.55 });
+const matLente = new THREE.MeshStandardMaterial({ color: 0x001a33, emissive: 0x0066ff, emissiveIntensity: 0.9, metalness: 0.9, roughness: 0.1 });
+const matVidro = new THREE.MeshStandardMaterial({ color: 0x0a0e14, metalness: 0.9, roughness: 0.05, transparent: true, opacity: 0.85 });
+
+const chassiCentro = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.42, 1.4), matCorpo);
+droneInterno.add(chassiCentro);
+
+const raioCanto = 0.21;
+[[0.55 - raioCanto, 0.7 - raioCanto], [-0.55 + raioCanto, 0.7 - raioCanto], [0.55 - raioCanto, -0.7 + raioCanto], [-0.55 + raioCanto, -0.7 + raioCanto]].forEach(([cx, cz]) => {
+  const canto = new THREE.Mesh(new THREE.CylinderGeometry(raioCanto, raioCanto, 0.42, 12, 1, false, 0, Math.PI), matCorpo);
+  canto.position.set(cx, 0, cz);
+  const angulo = Math.atan2(cz, cx);
+  canto.rotation.y = -angulo - Math.PI / 4;
+  droneInterno.add(canto);
+});
+
+const tampa = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.16, 1.35), matCorpoClaro);
+tampa.position.y = 0.28; droneInterno.add(tampa);
+
+const narizGeo = new THREE.ConeGeometry(0.35, 0.5, 4);
+narizGeo.rotateX(Math.PI / 2); narizGeo.rotateY(Math.PI / 4); narizGeo.scale(1.4, 0.6, 1);
+const nariz = new THREE.Mesh(narizGeo, matCorpoClaro);
+nariz.position.set(0, 0.2, -0.75); droneInterno.add(nariz);
+
+const frisoFrente = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.03, 0.05), matDourado);
+frisoFrente.position.set(0, 0.36, -0.5); droneInterno.add(frisoFrente);
+
+const dutoEsq = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.5), matCorpoEscuro);
+dutoEsq.position.set(-0.55, 0.1, 0); droneInterno.add(dutoEsq);
+const dutoDir = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.5), matCorpoEscuro);
+dutoDir.position.set(0.55, 0.1, 0); droneInterno.add(dutoDir);
+
+const bateria = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.22, 0.25), matCorpoEscuro);
+bateria.position.set(0, 0.05, 0.72); droneInterno.add(bateria);
+
+const botaoBateria = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 8), matDourado);
+botaoBateria.position.set(0, 0.17, 0.78); botaoBateria.rotation.x = Math.PI / 2; droneInterno.add(botaoBateria);
+
+const suporteGimbal = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.25), matCorpoEscuro);
+suporteGimbal.position.set(0, 0.05, -0.9); droneInterno.add(suporteGimbal);
+
+const gimbal = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8), matVidro);
+gimbal.position.set(0, -0.05, -1.0); droneInterno.add(gimbal);
+
+const anelLente = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.012, 6, 12), matDourado);
+anelLente.position.set(0, -0.05, -1.13); anelLente.rotation.x = Math.PI / 2; droneInterno.add(anelLente);
+
+const lente = new THREE.Mesh(new THREE.CircleGeometry(0.075, 12), matLente);
+lente.position.set(0, -0.05, -1.135); lente.rotation.x = -Math.PI / 2; droneInterno.add(lente);
+
+luzGimbal = new THREE.PointLight(0x0066ff, 0.5, 3);
+luzGimbal.position.set(0, -0.05, -1.2); droneInterno.add(luzGimbal);
+
+const antenaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.15, 6), matBraco);
+antenaBase.position.set(0, 0.42, 0.4); droneInterno.add(antenaBase);
+
+const antenaTopo = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshStandardMaterial({ color: 0xd4af37, emissive: 0xffaa33, emissiveIntensity: 0.6, metalness: 0.9, roughness: 0.2 }));
+antenaTopo.position.set(0, 0.52, 0.4); droneInterno.add(antenaTopo);
+
+luzAntena = new THREE.PointLight(0xffaa33, 0.3, 2);
+luzAntena.position.set(0, 0.52, 0.4); droneInterno.add(luzAntena);
+
+const angulosBraco = [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4];
+angulosBraco.forEach((ang, i) => {
+  const dx = Math.cos(ang), dz = Math.sin(ang);
+  const comprimentoBraco = 0.95;
+  const braco = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, comprimentoBraco, 8), matBraco);
+  braco.position.set(dx * (0.5 + comprimentoBraco * 0.4), 0.05, dz * (0.65 + comprimentoBraco * 0.4));
+  braco.rotation.z = Math.PI / 2; braco.rotation.y = -ang; droneInterno.add(braco);
+
+  const junta = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), matDourado);
+  junta.position.set(dx * 0.5, 0.08, dz * 0.65); droneInterno.add(junta);
+
+  const posMotorX = dx * 1.25, posMotorZ = dz * 1.25;
+  const motorBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.1, 12), matMotor);
+  motorBase.position.set(posMotorX, 0.05, posMotorZ); droneInterno.add(motorBase);
+
+  const anelMotor = new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.012, 6, 12), matAnelMotor);
+  anelMotor.rotation.x = Math.PI / 2; anelMotor.position.set(posMotorX, 0.08, posMotorZ); droneInterno.add(anelMotor);
+
+  const motorTopo = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.06, 10), new THREE.MeshStandardMaterial({ color: 0x1a1d21, metalness: 0.95, roughness: 0.1 }));
+  motorTopo.position.set(posMotorX, 0.13, posMotorZ); droneInterno.add(motorTopo);
+
+  const corLED = (i % 2 === 0) ? 0x00ff44 : 0xff3333;
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: corLED }));
+  led.position.set(posMotorX, 0.17, posMotorZ); droneInterno.add(led); luzesMotor.push(led);
+
+  const luzNav = new THREE.PointLight(corLED, 0.6, 3);
+  luzNav.position.set(posMotorX, 0.17, posMotorZ); droneInterno.add(luzNav); luzesNavegacao.push(luzNav);
+
+  const heliceGrupo = new THREE.Group();
+  heliceGrupo.position.set(posMotorX, 0.19, posMotorZ);
+  for (let j = 0; j < 3; j++) {
+    const lamina = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.012, 0.09), matHelice);
+    lamina.rotation.y = (j * Math.PI * 2) / 3; heliceGrupo.add(lamina);
+  }
+  const disco = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, side: THREE.DoubleSide }));
+  disco.rotation.x = -Math.PI / 2; heliceGrupo.add(disco);
+
+  const pino = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), matDourado);
+  pino.position.y = 0.01; heliceGrupo.add(pino);
+
+  droneInterno.add(heliceGrupo);
+  heliceRefs.push({ grupo: heliceGrupo, velocidade: 40 + Math.random() * 15, direcao: (i % 2 === 0) ? 1 : -1 });
+  emissoresFumaca.push({ offset: new THREE.Vector3(posMotorX, -0.08, posMotorZ) });
+});
+
+[[0.35, -0.35], [-0.35, -0.35]].forEach(([px, pz]) => {
+  const perna = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 6), matBraco);
+  perna.position.set(px, -0.32, pz); perna.rotation.x = 0.15; droneInterno.add(perna);
+  const pe = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), matMotor);
+  pe.position.set(px, -0.48, pz); droneInterno.add(pe);
+});
+[[0.4, 0.5], [-0.4, 0.5]].forEach(([px, pz]) => {
+  const perna = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.18, 6), matBraco);
+  perna.position.set(px, -0.26, pz); droneInterno.add(perna);
+  const pe = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), matMotor);
+  pe.position.set(px, -0.36, pz); droneInterno.add(pe);
+});
+
+luzAuraInterna = new THREE.PointLight(0xffcc44, 0.7, 4);
+luzAuraInterna.position.set(0, -0.5, 0); droneInterno.add(luzAuraInterna);
+
+const farolFrente = new THREE.PointLight(0xffffff, 0.6, 8);
+farolFrente.position.set(0, -0.05, -1.2); droneInterno.add(farolFrente);
+
+const ledGravacao = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+ledGravacao.position.set(0.25, 0.3, -0.7); droneInterno.add(ledGravacao);
+
+luzPowerup = new THREE.PointLight(0xffffff, 0, 6);
+luzPowerup.position.set(0, 1.2, 0); droneInterno.add(luzPowerup);
+
+// ============================================================
+// PARTÍCULAS (menos partículas para performance)
+// ============================================================
+const rastroParticulas = [];
+for (let i = 0; i < 25; i++) { // ⚡ era 40
+  const p = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 4), new THREE.MeshBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0, depthWrite: false }));
+  p.visible = false; cena.add(p);
+  rastroParticulas.push({ mesh: p, vida: 0, vidaMax: 1.0 });
+}
+function emitirRastro(pos) {
+  let p = rastroParticulas.find(x => x.vida <= 0);
+  if (!p) p = rastroParticulas.reduce((a, b) => (a.vida > b.vida ? a : b));
+  p.mesh.position.copy(pos);
+  p.mesh.visible = true;
+  p.vida = 0.8; p.vidaMax = p.vida;
+  p.mesh.material.opacity = 0.5;
+  p.mesh.scale.setScalar(0.5);
+}
+
+const particulasFumaca = [];
+for (let i = 0; i < 30; i++) { // ⚡ era 60
+  const p = new THREE.Mesh(new THREE.SphereGeometry(0.15, 4, 3), new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0, depthWrite: false }));
+  p.visible = false; cena.add(p);
+  particulasFumaca.push({ mesh: p, vida: 0, vidaMax: 1.5, velocidade: new THREE.Vector3() });
+}
+function emitirFumaca(pos) {
+  let p = particulasFumaca.find(x => x.vida <= 0);
+  if (!p) p = particulasFumaca.reduce((a, b) => (a.vida > b.vida ? a : b));
+  p.mesh.position.copy(pos);
+  p.mesh.visible = true;
+  p.vida = 0.8 + Math.random() * 0.6;
+  p.vidaMax = p.vida;
+  p.mesh.material.opacity = 0.3;
+  p.mesh.scale.setScalar(0.5 + Math.random() * 0.3);
+  p.velocidade.set((Math.random() - 0.5) * 0.5, -0.3 - Math.random() * 0.5, (Math.random() - 0.5) * 0.5);
+}
+
+const particulasExplosao = [];
+for (let i = 0; i < 40; i++) { // ⚡ era 60
+  const p = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0, depthWrite: false }));
+  p.visible = false; cena.add(p);
+  particulasExplosao.push({ mesh: p, vida: 0, vidaMax: 0.8, velocidade: new THREE.Vector3() });
+}
+function emitirExplosao(pos, cor) {
+  for (let i = 0; i < 8; i++) { // ⚡ era 12
+    let p = particulasExplosao.find(x => x.vida <= 0);
+    if (!p) break;
+    p.mesh.position.copy(pos);
+    p.mesh.visible = true;
+    p.mesh.material.color.setHex(cor);
+    p.vida = 0.6 + Math.random() * 0.4;
+    p.vidaMax = p.vida;
+    p.mesh.material.opacity = 0.9;
+    p.mesh.scale.setScalar(0.8 + Math.random() * 0.5);
+    p.velocidade.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+  }
+}
+function atualizarExplosao(dt) {
+  particulasExplosao.forEach(p => {
+    if (p.vida <= 0) { p.mesh.visible = false; return; }
+    p.vida -= dt;
+    p.mesh.position.add(p.velocidade.clone().multiplyScalar(dt));
+    p.velocidade.multiplyScalar(0.95);
+    const prog = 1 - (p.vida / p.vidaMax);
+    p.mesh.scale.setScalar((0.8 + prog * 0.5) * (1 - prog * 0.5));
+    p.mesh.material.opacity = 0.9 * (1 - prog);
+    if (p.vida <= 0) p.mesh.visible = false;
+  });
+}
+
+// ============================================================
+// ANÉIS (mantidos altos)
+// ============================================================
+const ALTURA_ANEL = 8;
+const aneis = [];
+function criarAnel(x, z) {
+  const y = alturaTerreno(x, z) + ALTURA_ANEL;
+  const grupo = new THREE.Group();
+  const torus = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.18, 10, 24), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.95, roughness: 0.15, emissive: 0xaa7700, emissiveIntensity: 0.5 }));
+  grupo.add(torus);
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.05, 6, 24), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.6 }));
+  halo.scale.setScalar(1.35); grupo.add(halo);
+  grupo.add(new THREE.PointLight(0xffd700, 1.2, 10));
+  grupo.position.set(x, y, z); cena.add(grupo);
+  aneis.push({ grupo, torus, halo, coletado: false, posicao: new THREE.Vector3(x, y, z), faseRotacao: Math.random() * Math.PI * 2 });
+}
+const posicoesAneis = [
+  [30, 0], [-40, 20], [50, -30], [-25, -50], [15, 60], [-70, 30], [60, 55], [-55, -60], [80, -20], [-90, -10],
+  [100, 40], [-100, 20], [120, -40], [-120, -60], [90, 80], [-80, 90], [40, 100], [-50, 110], [70, -100], [-95, -95],
+];
+posicoesAneis.forEach(([x, z]) => criarAnel(x, z));
+
+// ============================================================
+// POWER-UPS
+// ============================================================
+const ALTURA_POWERUP = 8;
+const powerups = [];
+function criarPowerup(x, z, tipo) {
+  const y = alturaTerreno(x, z) + ALTURA_POWERUP;
+  const grupo = new THREE.Group();
+  const cfg = TIPOS_POWERUP[tipo];
+  const esfera = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 0), new THREE.MeshStandardMaterial({ color: cfg.cor, metalness: 0.8, roughness: 0.3, emissive: cfg.cor, emissiveIntensity: 0.6, transparent: true, opacity: 0.9 }));
+  grupo.add(esfera);
+  const anel = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.06, 6, 20), new THREE.MeshBasicMaterial({ color: cfg.cor, transparent: true, opacity: 0.7 }));
+  anel.rotation.x = Math.PI / 2; grupo.add(anel);
+  const anel2 = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.04, 6, 20), new THREE.MeshBasicMaterial({ color: cfg.cor, transparent: true, opacity: 0.5 }));
+  anel2.rotation.y = Math.PI / 2; grupo.add(anel2);
+  const luz = new THREE.PointLight(cfg.cor, 1.5, 8);
+  grupo.add(luz);
+  grupo.position.set(x, y, z);
+  cena.add(grupo);
+  powerups.push({ grupo, esfera, anel, anel2, luz, tipo, cfg, coletado: false, posicao: new THREE.Vector3(x, y, z), faseRotacao: Math.random() * Math.PI * 2 });
+}
+const posicoesPowerups = [
+  [0, -30, 'TURBO'], [-45, 0, 'ESCUDO'], [40, 30, 'IMA'], [-30, -40, 'TEMPO'],
+  [60, -20, 'TURBO'], [-60, 50, 'ESCUDO'], [25, 70, 'IMA'], [-15, -70, 'TEMPO'],
+  [90, 20, 'TURBO'], [-85, -30, 'ESCUDO'], [110, -60, 'IMA'], [-100, 60, 'TEMPO'],
+];
+posicoesPowerups.forEach(([x, z, tipo]) => criarPowerup(x, z, tipo));
+
+// ============================================================
+// MORCEGOS (agora mais LENTOS)
+// ============================================================
+const morcegos = [];
+function criarMorcego(x, z) {
+  const g = new THREE.Group();
+  const corpo = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshStandardMaterial({ color: 0x1a0a1a, roughness: 0.9 }));
+  g.add(corpo);
+  const matAsa = new THREE.MeshStandardMaterial({ color: 0x2a1a2a, side: THREE.DoubleSide, roughness: 0.8 });
+  const asaEsq = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), matAsa);
+  asaEsq.position.set(-0.9, 0, 0); g.add(asaEsq);
+  const asaDir = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), matAsa);
+  asaDir.position.set(0.9, 0, 0); g.add(asaDir);
+  const olhoMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
+  [-0.15, 0.15].forEach(ox => {
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), olhoMat);
+    olho.position.set(ox, 0.1, 0.45); g.add(olho);
+  });
+  g.position.set(x, alturaTerreno(x, z) + 10, z);
+  g.visible = false;
+  cena.add(g);
+  morcegos.push({
+    grupo: g, asaEsq, asaDir,
+    posicao: g.position.clone(),
+    velocidade: new THREE.Vector3(),
+    // ⚡ VELOCIDADE REDUZIDA: era 14-18, agora 5-8
+    velocidadeMax: 5 + Math.random() * 3,
+    ativo: false,
+    faseZigueZague: Math.random() * Math.PI * 2,
+    tempoProximoGrito: 0,
+  });
+}
+const posicoesMorcegos = [[70, 70], [-80, 60], [60, -80], [-70, -70], [110, 40], [-110, -30], [30, 120], [-40, -120]];
+posicoesMorcegos.forEach(([x, z]) => criarMorcego(x, z));
+
+// ============================================================
+// FÍSICA / CÂMERA / CONTROLES
+// ============================================================
+const droneFisica = { velocidade: new THREE.Vector3() };
+drone.position.set(0, alturaTerreno(0, 0) + 3, 0);
+
+const cameraConfig = { theta: 0, phi: Math.PI / 4, distancia: 10, arrastando: false, ultimoX: 0, ultimoY: 0, tempoUltimoMouse: 0, tempoRetorno: 1.5 };
+
+renderer.domElement.addEventListener('mousedown', (e) => { cameraConfig.arrastando = true; cameraConfig.ultimoX = e.clientX; cameraConfig.ultimoY = e.clientY; cameraConfig.tempoUltimoMouse = performance.now() / 1000; renderer.domElement.style.cursor = 'grabbing'; });
+renderer.domElement.addEventListener('mousemove', (e) => {
+  if (!cameraConfig.arrastando) return;
+  const dx = e.clientX - cameraConfig.ultimoX;
+  const dy = e.clientY - cameraConfig.ultimoY;
+  cameraConfig.theta -= dx * 0.005;
+  cameraConfig.phi -= dy * 0.005;
+  cameraConfig.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, cameraConfig.phi));
+  cameraConfig.ultimoX = e.clientX; cameraConfig.ultimoY = e.clientY;
+  cameraConfig.tempoUltimoMouse = performance.now() / 1000;
+});
+renderer.domElement.addEventListener('mouseup', () => { cameraConfig.arrastando = false; renderer.domElement.style.cursor = 'grab'; cameraConfig.tempoUltimoMouse = performance.now() / 1000; });
+renderer.domElement.addEventListener('mouseleave', () => { cameraConfig.arrastando = false; renderer.domElement.style.cursor = 'grab'; });
+renderer.domElement.style.cursor = 'grab';
+
+renderer.domElement.addEventListener('wheel', (e) => { e.preventDefault(); cameraConfig.distancia += e.deltaY * 0.02; cameraConfig.distancia = Math.max(4, Math.min(40, cameraConfig.distancia)); }, { passive: false });
+
+const TECLAS = {};
+addEventListener('keydown', (e) => {
+  TECLAS[e.code] = true;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  if (e.code === 'KeyR' && ESTADO.rodando) reiniciarFaseAtual();
+});
+addEventListener('keyup', (e) => { TECLAS[e.code] = false; });
+
+// ============================================================
+// MINIMAPA
+// ============================================================
+const minimapCanvas = document.getElementById('minimap-canvas');
+const minimapCtx = minimapCanvas.getContext('2d');
+const MINIMAP_TAMANHO = 360;
+const MINIMAP_ESCALA = MINIMAP_TAMANHO / 400;
+
+function desenharMinimapa() {
+  const ctx = minimapCtx;
+  ctx.fillStyle = 'rgba(30,25,15,0.9)';
+  ctx.fillRect(0, 0, MINIMAP_TAMANHO, MINIMAP_TAMANHO);
+  ctx.strokeStyle = 'rgba(212,175,55,0.4)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(4, 4, MINIMAP_TAMANHO - 8, MINIMAP_TAMANHO - 8);
+
+  const cx = MINIMAP_TAMANHO / 2, cy = MINIMAP_TAMANHO / 2;
+  const paraPixel = (x, z) => ({ px: cx + x * MINIMAP_ESCALA, py: cy + z * MINIMAP_ESCALA });
+
+  ctx.strokeStyle = 'rgba(212,175,55,0.1)'; ctx.lineWidth = 1;
+  for (let i = -200; i <= 200; i += 50) {
+    const p1 = paraPixel(i, -200), p2 = paraPixel(i, 200);
+    ctx.beginPath(); ctx.moveTo(p1.px, p1.py); ctx.lineTo(p2.px, p2.py); ctx.stroke();
+    const p3 = paraPixel(-200, i), p4 = paraPixel(200, i);
+    ctx.beginPath(); ctx.moveTo(p3.px, p3.py); ctx.lineTo(p4.px, p4.py); ctx.stroke();
+  }
+
+  aneis.forEach(a => { if (a.coletado || !a.grupo.visible) return; const { px, py } = paraPixel(a.posicao.x, a.posicao.z); ctx.fillStyle = '#ffd700'; ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; });
+  powerups.forEach(p => { if (p.coletado || !p.grupo.visible) return; const { px, py } = paraPixel(p.posicao.x, p.posicao.z); ctx.fillStyle = p.cfg.corCSS; ctx.shadowColor = p.cfg.corCSS; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; });
+  morcegos.forEach(m => { if (!m.ativo) return; const { px, py } = paraPixel(m.posicao.x, m.posicao.z); ctx.fillStyle = '#aa44ff'; ctx.shadowColor = '#aa44ff'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; });
+
+  const { px, py } = paraPixel(drone.position.x, drone.position.z);
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(drone.rotation.y);
+  ctx.fillStyle = '#00ff88'; ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.moveTo(0, -10); ctx.lineTo(-7, 8); ctx.lineTo(7, 8); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+// HUD
+// ============================================================
+const coracoesEls = document.querySelectorAll('#coracoes .coracao');
+const aneisColetadosEl = document.getElementById('aneis-coletados');
+const aneisTotaisEl = document.getElementById('aneis-totais');
+const pontosValorEl = document.getElementById('pontos-valor');
+const timerEl = document.getElementById('timer-valor');
+const hudTimer = document.getElementById('hud-timer');
+const faseNumeroEl = document.getElementById('fase-numero');
+const faseNomeEl = document.getElementById('fase-nome');
+const recordeTotalEl = document.getElementById('recorde-total');
+const niveisGridEl = document.getElementById('niveis-grid');
+const hudPowerupsEl = document.getElementById('hud-powerups');
+const horaIconeEl = document.getElementById('hora-icone');
+const horaTextoEl = document.getElementById('hora-texto');
+
+function atualizarHUDVidas() { coracoesEls.forEach((el, i) => { if (i < ESTADO.vidas) el.classList.remove('vazio'); else el.classList.add('vazio'); }); }
+function atualizarHUDAnais() { aneisColetadosEl.textContent = ESTADO.aneisColetados; aneisTotaisEl.textContent = ESTADO.aneisTotais; }
+function atualizarHUDPontos() { pontosValorEl.textContent = ESTADO.pontos.toLocaleString('pt-BR'); }
+function atualizarHUDTimer() { const t = Math.max(0, Math.ceil(ESTADO.tempoRestante)); timerEl.textContent = t; if (t <= 10) hudTimer.classList.add('perigo'); else hudTimer.classList.remove('perigo'); }
+function atualizarHUDfase() { const f = FASES[ESTADO.faseAtual]; faseNumeroEl.textContent = f.numero; faseNomeEl.textContent = f.nome; }
+function atualizarHUDHora() {
+  const h = ESTADO.hora;
+  let ic = '☀️', tx = 'Meio-dia';
+  if (h >= 5 && h < 8) { ic = '🌅'; tx = 'Amanhecer'; }
+  else if (h >= 8 && h < 11) { ic = '🌤️'; tx = 'Manhã'; }
+  else if (h >= 11 && h < 14) { ic = '☀️'; tx = 'Meio-dia'; }
+  else if (h >= 14 && h < 17) { ic = '🌤️'; tx = 'Tarde'; }
+  else if (h >= 17 && h < 20) { ic = '🌅'; tx = 'Pôr do sol'; }
+  else if (h >= 20 && h < 22) { ic = '🌆'; tx = 'Crepúsculo'; }
+  else { ic = '🌙'; tx = 'Noite'; }
+  horaIconeEl.textContent = ic; horaTextoEl.textContent = tx;
+}
+function atualizarHUDPowerups() {
+  const ativos = Object.entries(ESTADO.powerupsAtivos).filter(([_, t]) => t > 0);
+  if (ativos.length === 0) { hudPowerupsEl.classList.add('vazio'); hudPowerupsEl.innerHTML = ''; return; }
+  hudPowerupsEl.classList.remove('vazio');
+  hudPowerupsEl.innerHTML = '<div class="titulo">⚡ Ativos</div>' + ativos.map(([tipo, tempo]) => {
+    const cfg = TIPOS_POWERUP[tipo];
+    return `<div class="powerup-badge" style="color: ${cfg.corCSS}"><span class="icone">${cfg.icone}</span><span class="nome">${cfg.nome}</span><span class="tempo">${tempo.toFixed(1)}s</span></div>`;
+  }).join('');
+}
+
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function mostrarToast(texto, duracao = 1800) {
+  toastEl.textContent = texto;
+  toastEl.classList.add('mostrar');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('mostrar'), duracao);
+}
+
+const flashEl = document.getElementById('flash-dano');
+function flashDano() { flashEl.classList.add('ativo'); setTimeout(() => flashEl.classList.remove('ativo'), 150); }
+const flashPowerupEl = document.getElementById('flash-powerup');
+function flashPowerup(cor) {
+  flashPowerupEl.style.background = `radial-gradient(ellipse at center, transparent 40%, ${cor}40 100%)`;
+  flashPowerupEl.classList.add('ativo');
+  setTimeout(() => flashPowerupEl.classList.remove('ativo'), 300);
+}
+
+// ============================================================
+// CICLO DIA/NOITE
+// ============================================================
+function atualizarCicloDiaNoite(dt) {
+  ESTADO.hora += (24 / ESTADO.duracaoDia) * dt;
+  if (ESTADO.hora >= 24) ESTADO.hora -= 24;
+  const h = ESTADO.hora;
+
+  let noite = 0;
+  if (h < 5 || h >= 21) noite = 1;
+  else if (h >= 5 && h < 7) noite = 1 - (h - 5) / 2;
+  else if (h >= 19 && h < 21) noite = (h - 19) / 2;
+
+  let corTopo, corMeio, corBaixo, corFog, intSol, intAmb;
+  if (h >= 5 && h < 7) {
+    const t = (h - 5) / 2;
+    corTopo = new THREE.Color(0x3a5a8a).lerp(new THREE.Color(0x5a3a6a), t);
+    corMeio = new THREE.Color(0xd4a878).lerp(new THREE.Color(0xff8844), t);
+    corBaixo = new THREE.Color(0xe8c898).lerp(new THREE.Color(0xffaa66), t);
+    corFog = 0xf0b880; intSol = 0.8 + t * 0.8; intAmb = 0.4 + t * 0.3;
+  } else if (h >= 7 && h < 17) {
+    corTopo = new THREE.Color(0x3a5a8a); corMeio = new THREE.Color(0xd4a878); corBaixo = new THREE.Color(0xe8c898);
+    corFog = 0xddaa77; intSol = 1.6; intAmb = 0.6;
+  } else if (h >= 17 && h < 19) {
+    const t = (h - 17) / 2;
+    corTopo = new THREE.Color(0x3a5a8a).lerp(new THREE.Color(0x2a1a3a), t);
+    corMeio = new THREE.Color(0xd4a878).lerp(new THREE.Color(0xff5522), t);
+    corBaixo = new THREE.Color(0xe8c898).lerp(new THREE.Color(0xff8833), t);
+    corFog = 0xcc8855; intSol = 1.6 - t * 0.8; intAmb = 0.6 - t * 0.2;
+  } else if (h >= 19 && h < 21) {
+    const t = (h - 19) / 2;
+    corTopo = new THREE.Color(0x2a1a3a).lerp(new THREE.Color(0x1a1a4a), t);
+    corMeio = new THREE.Color(0x883355).lerp(new THREE.Color(0x2a2a5a), t);
+    corBaixo = new THREE.Color(0xaa5533).lerp(new THREE.Color(0x3a3a6a), t);
+    corFog = 0x3a2a44; intSol = 0.8 - t * 0.7; intAmb = 0.4 - t * 0.1;
+  } else {
+    corTopo = new THREE.Color(0x1a1a4a); corMeio = new THREE.Color(0x2a2a5a); corBaixo = new THREE.Color(0x3a3a6a);
+    corFog = 0x2a2a4a; intSol = 0.15; intAmb = 0.5;
+  }
+
+  materialCeu.uniforms.corTopo.value.copy(corTopo);
+  materialCeu.uniforms.corMeio.value.copy(corMeio);
+  materialCeu.uniforms.corBaixo.value.copy(corBaixo);
+  materialCeu.uniforms.noite.value = noite;
+
+  cena.fog.color.setHex(corFog);
+  luzAmbiente.intensity = intAmb;
+  luzHemi.intensity = intAmb + 0.1;
+
+  const anguloSol = ((h - 6) / 12) * Math.PI;
+  const solX = Math.cos(anguloSol) * 500, solY = Math.sin(anguloSol) * 500;
+  sol.position.set(solX, solY, 100);
+  luzSol.position.set(solX, solY, 100);
+  luzSol.intensity = intSol;
+  sol.visible = h >= 5 && h < 19;
+
+  const anguloLua = (((h + 18) % 24) / 12) * Math.PI;
+  const luaX = Math.cos(anguloLua) * 500, luaY = Math.sin(anguloLua) * 500;
+  lua.position.set(luaX, luaY, -100);
+  luzLua.position.set(luaX, luaY, -100);
+  luzLua.intensity = (h < 6 || h > 19) ? 0.6 : 0;
+  lua.visible = h < 6 || h > 19;
+
+  if (luzAuraInterna) luzAuraInterna.intensity = (0.6 + Math.sin(performance.now() / 500) * 0.3) * (1 + noite * 0.5);
+  atualizarHUDHora();
+}
+
+function aplicarBioma(bioma) {
+  const cfg = BIOMAS[bioma];
+  materialTerreno.color.setHex(cfg.terrenoCor);
+  cena.fog.color.setHex(cfg.fogCor);
+  cena.fog.near = cfg.fogPerto;
+  cena.fog.far = cfg.fogLonge;
+  gerarVegetacao(bioma);
+}
+
+// ============================================================
+// TELA INICIAL
+// ============================================================
+function gerarCardsNiveis() {
+  niveisGridEl.innerHTML = '';
+  FASES.forEach((fase, i) => {
+    const rec = PROGRESSO.recordesPorFase[i] || 0;
+    const estrelas = PROGRESSO.estrelasPorFase[i] || 0;
+    const bioma = BIOMAS[fase.bioma];
+
+    const card = document.createElement('div');
+    card.className = 'nivel-card';
+    card.innerHTML = `
+      <div class="numero">Fase ${fase.numero}</div>
+      <div class="nome">${fase.nome}</div>
+      <div class="bioma-tag" style="background: ${bioma.tagCor}22; border: 1px solid ${bioma.tagCor}; color: ${bioma.tagCor}">${bioma.tag}</div>
+      <div class="descricao">${fase.descricao}</div>
+      <div class="dificuldade">${[1,2,3].map(n => `<span class="${n <= fase.dificuldade ? '' : 'vazio'}">★</span>`).join('')}</div>
+      <div class="estrelas-conquistadas">${[1,2,3].map(n => `<span class="${n <= estrelas ? 'ganha' : ''}">★</span>`).join('')}</div>
+      ${rec > 0 ? `<div class="recorde-mini">🏆 ${rec} pts</div>` : ''}
+    `;
+    card.onclick = () => iniciarFase(i);
+    niveisGridEl.appendChild(card);
+  });
+  recordeTotalEl.textContent = (PROGRESSO.recordeTotal || 0).toLocaleString('pt-BR');
+}
+
+// ============================================================
+// INICIAR FASE
+// ============================================================
+function iniciarFase(indice) {
+  inicializarAudio();
+  iniciarSomMotor();
+  ESTADO.faseAtual = indice;
+  const fase = FASES[indice];
+
+  ESTADO.rodando = true;
+  ESTADO.vidas = 3;
+  ESTADO.aneisColetados = 0;
+  ESTADO.aneisTotais = fase.aneis;
+  ESTADO.pontos = 0;
+  ESTADO.tempoMaximo = fase.tempo;
+  ESTADO.tempoRestante = fase.tempo;
+  ESTADO.invulneravel = false;
+  ESTADO.tempoInvulneravel = 0;
+  ESTADO.powerupsAtivos = {};
+  ESTADO.hora = fase.horaInicial;
+
+  telaInicial.classList.add('esconder');
+  telaFimFase.classList.remove('mostrar');
+  telaGameOver.classList.remove('mostrar');
+
+  aplicarBioma(fase.bioma);
+
+  aneis.forEach((a, i) => { a.coletado = false; a.grupo.visible = i < fase.aneis; });
+  powerups.forEach((p, i) => { p.coletado = false; p.grupo.visible = i < fase.numPowerups; });
+
+  morcegos.forEach((m, i) => { m.ativo = i < fase.morcegos; m.grupo.visible = m.ativo; const [x, z] = posicoesMorcegos[i]; m.posicao.set(x, alturaTerreno(x, z) + 10, z); m.velocidade.set(0, 0, 0); m.grupo.position.copy(m.posicao); });
+
+  drone.position.set(0, alturaTerreno(0, 0) + 3, 0);
+  drone.rotation.set(0, 0, 0);
+  droneInterno.rotation.set(0, 0, 0);
+  droneFisica.velocidade.set(0, 0, 0);
+
+  cameraConfig.theta = 0; cameraConfig.phi = Math.PI / 4; cameraConfig.distancia = 10;
+  cameraConfig.tempoUltimoMouse = performance.now() / 1000;
+  primeiraVez = true;
+
+  particulasFumaca.forEach((p) => { p.vida = 0; p.mesh.visible = false; });
+  rastroParticulas.forEach((p) => { p.vida = 0; p.mesh.visible = false; });
+  particulasExplosao.forEach((p) => { p.vida = 0; p.mesh.visible = false; });
+
+  atualizarHUDVidas(); atualizarHUDAnais(); atualizarHUDPontos(); atualizarHUDTimer(); atualizarHUDfase(); atualizarHUDPowerups(); atualizarHUDHora();
+
+  mostrarToast(`Fase ${fase.numero} — ${fase.nome}`, 2500);
+}
+
+function reiniciarFaseAtual() { iniciarFase(ESTADO.faseAtual); }
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+const clock = new THREE.Clock();
+let ultimoAvisoTempo = -1;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (ESTADO.rodando) {
+    atualizarDrone(dt);
+    atualizarAnaeis(dt);
+    atualizarPowerups(dt);
+    atualizarMorcegos(dt);
+    atualizarFumaca(dt);
+    atualizarRastro(dt);
+    atualizarExplosao(dt);
+    verificarColisoes(dt);
+    atualizarCamera(dt);
+    atualizarEfeitosLuz(dt);
+    atualizarTimer(dt);
+    atualizarPowerupsAtivos(dt);
+    atualizarSomMotor(droneFisica.velocidade.length());
+  }
+
+  atualizarCicloDiaNoite(dt);
+  desenharMinimapa();
+  renderer.render(cena, camera);
+}
+animate();
+
+// ============================================================
+// TIMER / POWER-UPS / EFEITOS
+// ============================================================
+function atualizarTimer(dt) {
+  ESTADO.tempoRestante -= dt;
+  const s = Math.ceil(ESTADO.tempoRestante);
+  if (s <= 5 && s > 0 && s !== ultimoAvisoTempo) { ultimoAvisoTempo = s; somAlerta(); }
+  if (ESTADO.tempoRestante <= 0) { ESTADO.tempoRestante = 0; perderJogo('O tempo acabou!'); return; }
+  atualizarHUDTimer();
+}
+
+function atualizarPowerupsAtivos(dt) {
+  Object.keys(ESTADO.powerupsAtivos).forEach(tipo => {
+    if (ESTADO.powerupsAtivos[tipo] > 0) {
+      ESTADO.powerupsAtivos[tipo] -= dt;
+      if (ESTADO.powerupsAtivos[tipo] <= 0) delete ESTADO.powerupsAtivos[tipo];
+    }
+  });
+  if (luzPowerup) {
+    if (ESTADO.powerupsAtivos.TURBO) { luzPowerup.color.setHex(0xffaa00); luzPowerup.intensity = 1.5; }
+    else if (ESTADO.powerupsAtivos.ESCUDO) { luzPowerup.color.setHex(0x00aaff); luzPowerup.intensity = 1.2; }
+    else if (ESTADO.powerupsAtivos.IMA) { luzPowerup.color.setHex(0xaa44ff); luzPowerup.intensity = 1.2; }
+    else luzPowerup.intensity = 0;
+  }
+  atualizarHUDPowerups();
+}
+
+let tempoEfeitos = 0;
+function atualizarEfeitosLuz(dt) {
+  tempoEfeitos += dt;
+  luzesMotor.forEach((led, i) => {
+    const on = Math.sin(tempoEfeitos * 6 + i * 1.5) > 0;
+    led.material.opacity = on ? 1 : 0.35;
+    led.material.transparent = true;
+    if (luzesNavegacao[i]) luzesNavegacao[i].intensity = on ? 0.8 : 0.3;
+  });
+  if (luzAuraInterna) luzAuraInterna.intensity = 0.6 + Math.sin(tempoEfeitos * 2) * 0.3;
+  if (luzGimbal) luzGimbal.intensity = 0.4 + Math.sin(tempoEfeitos * 3) * 0.2;
+  if (luzAntena) luzAntena.intensity = 0.2 + (Math.sin(tempoEfeitos * 4) > 0 ? 0.4 : 0);
+}
+
+// ============================================================
+// DRONE
+// ============================================================
+function atualizarDrone(dt) {
+  let VEL_FRENTE = 40, VEL_VERTICAL = 30, VEL_MAX = 45;
+  const VEL_ROTACAO = 2.5, ATTRITO = 3.5;
+
+  if (ESTADO.powerupsAtivos.TURBO) { VEL_FRENTE *= 2; VEL_MAX *= 1.8; }
+
+  if (TECLAS['KeyA']) drone.rotation.y += VEL_ROTACAO * dt;
+  if (TECLAS['KeyD']) drone.rotation.y -= VEL_ROTACAO * dt;
+
+  const dirFrente = new THREE.Vector3(0, 0, -1).applyEuler(drone.rotation);
+  const dirLado = new THREE.Vector3(1, 0, 0).applyEuler(drone.rotation);
+  const aceleracao = new THREE.Vector3();
+
+  if (TECLAS['ArrowUp']) aceleracao.add(dirFrente.clone().multiplyScalar(VEL_FRENTE));
+  if (TECLAS['ArrowDown']) aceleracao.add(dirFrente.clone().multiplyScalar(-VEL_FRENTE));
+  if (TECLAS['ArrowLeft']) aceleracao.add(dirLado.clone().multiplyScalar(-VEL_FRENTE));
+  if (TECLAS['ArrowRight']) aceleracao.add(dirLado.clone().multiplyScalar(VEL_FRENTE));
+  if (TECLAS['KeyW']) aceleracao.y += VEL_VERTICAL;
+  if (TECLAS['KeyS']) aceleracao.y -= VEL_VERTICAL;
+
+  droneFisica.velocidade.add(aceleracao.multiplyScalar(dt));
+  droneFisica.velocidade.multiplyScalar(Math.max(0, 1 - ATTRITO * dt));
+  if (droneFisica.velocidade.length() > VEL_MAX) droneFisica.velocidade.setLength(VEL_MAX);
+
+  drone.position.add(droneFisica.velocidade.clone().multiplyScalar(dt));
+
+  const limite = TAMANHO_TERRENO / 2 - 10;
+  drone.position.x = Math.max(-limite, Math.min(limite, drone.position.x));
+  drone.position.z = Math.max(-limite, Math.min(limite, drone.position.z));
+
+  const altSolo = alturaTerreno(drone.position.x, drone.position.z);
+  if (drone.position.y < altSolo + 1) { drone.position.y = altSolo + 1; if (droneFisica.velocidade.y < 0) droneFisica.velocidade.y = 0; }
+  if (drone.position.y > 80) { drone.position.y = 80; if (droneFisica.velocidade.y > 0) droneFisica.velocidade.y = 0; }
+
+  const pAlvo = THREE.MathUtils.clamp(droneFisica.velocidade.z * 0.02, -0.5, 0.5);
+  const rAlvo = THREE.MathUtils.clamp(-droneFisica.velocidade.x * 0.02, -0.5, 0.5);
+  droneInterno.rotation.x = THREE.MathUtils.lerp(droneInterno.rotation.x, pAlvo, dt * 8);
+  droneInterno.rotation.z = THREE.MathUtils.lerp(droneInterno.rotation.z, rAlvo, dt * 8);
+
+  heliceRefs.forEach((h) => {
+    let vel = h.velocidade;
+    if (ESTADO.powerupsAtivos.TURBO) vel *= 1.5;
+    h.grupo.rotation.y += vel * dt * h.direcao;
+  });
+
+  if (droneFisica.velocidade.length() > 3) emitirRastro(drone.position.clone());
+
+  if (Math.random() < 0.3) { // ⚡ menos fumaça (era 0.4)
+    emissoresFumaca.forEach((e) => {
+      const pos = e.offset.clone().applyEuler(droneInterno.rotation).add(drone.position);
+      emitirFumaca(pos);
+    });
+  }
+}
+
+const cameraPosSuave = new THREE.Vector3();
+const cameraLookSuave = new THREE.Vector3();
+let primeiraVez = true;
+
+function atualizarCamera(dt) {
+  const agora = performance.now() / 1000;
+  if (!cameraConfig.arrastando && agora - cameraConfig.tempoUltimoMouse > cameraConfig.tempoRetorno) {
+    cameraConfig.theta = THREE.MathUtils.lerp(cameraConfig.theta, 0, dt * 3);
+  }
+  const thetaFinal = cameraConfig.theta + drone.rotation.y;
+  const cx = drone.position.x + cameraConfig.distancia * Math.sin(cameraConfig.phi) * Math.sin(thetaFinal);
+  const cy = drone.position.y + cameraConfig.distancia * Math.cos(cameraConfig.phi);
+  const cz = drone.position.z + cameraConfig.distancia * Math.sin(cameraConfig.phi) * Math.cos(thetaFinal);
+  const alvo = new THREE.Vector3(cx, cy, cz);
+
+  if (primeiraVez) { cameraPosSuave.copy(alvo); cameraLookSuave.copy(drone.position); primeiraVez = false; }
+
+  cameraPosSuave.lerp(alvo, 1 - Math.pow(0.001, dt));
+  camera.position.copy(cameraPosSuave);
+  const lookAlvo = drone.position.clone(); lookAlvo.y += 1;
+  cameraLookSuave.lerp(lookAlvo, 1 - Math.pow(0.001, dt));
+  camera.lookAt(cameraLookSuave);
+}
+
+// ============================================================
+// ANÉIS / POWER-UPS
+// ============================================================
+function atualizarAnaeis(dt) {
+  const tempo = performance.now() / 1000;
+  const imaAtivo = ESTADO.powerupsAtivos.IMA > 0;
+  aneis.forEach((a) => {
+    if (a.coletado || !a.grupo.visible) return;
+    a.grupo.rotation.y += dt * 1.2;
+    a.grupo.rotation.x = Math.sin(tempo + a.faseRotacao) * 0.3;
+    a.halo.scale.setScalar(1.35 * (1 + Math.sin(tempo * 3 + a.faseRotacao) * 0.15));
+    if (imaAtivo) {
+      const dist = drone.position.distanceTo(a.posicao);
+      if (dist < 15 && dist > 0.5) {
+        const dir = new THREE.Vector3().subVectors(drone.position, a.posicao).normalize();
+        a.posicao.add(dir.multiplyScalar(20 * dt));
+        a.grupo.position.copy(a.posicao);
+      }
+    }
+    if (drone.position.distanceTo(a.posicao) < 2.5) coletarAnel(a);
+  });
+}
+
+function coletarAnel(a) {
+  a.coletado = true;
+  a.grupo.visible = false;
+  emitirExplosao(a.posicao.clone(), 0xffd700);
+  ESTADO.aneisColetados++;
+  ESTADO.pontos += 100;
+  ESTADO.tempoRestante += 5;
+  atualizarHUDAnais(); atualizarHUDPontos(); atualizarHUDTimer();
+  somColetarAnel(); somTempo();
+  mostrarToast('✦ +100 · +5s ✦', 1000);
+  if (ESTADO.aneisColetados >= ESTADO.aneisTotais) completarFase();
+}
+
+function atualizarPowerups(dt) {
+  const tempo = performance.now() / 1000;
+  powerups.forEach((p) => {
+    if (p.coletado || !p.grupo.visible) return;
+    p.grupo.rotation.y += dt * 1.5;
+    p.anel.rotation.z += dt * 2;
+    p.anel2.rotation.x += dt * 1.8;
+    p.esfera.rotation.x += dt * 0.8;
+    p.esfera.rotation.y += dt * 0.6;
+    p.luz.intensity = 1.2 + Math.sin(tempo * 4 + p.faseRotacao) * 0.5;
+    if (drone.position.distanceTo(p.posicao) < 2.5) coletarPowerup(p);
+  });
+}
+
+function coletarPowerup(p) {
+  p.coletado = true;
+  p.grupo.visible = false;
+  emitirExplosao(p.posicao.clone(), p.cfg.cor);
+  const cfg = p.cfg;
+  if (p.tipo === 'TEMPO') { ESTADO.tempoRestante += 10; atualizarHUDTimer(); somPowerupTempo(); }
+  else {
+    ESTADO.powerupsAtivos[p.tipo] = cfg.duracao;
+    atualizarHUDPowerups();
+    if (p.tipo === 'TURBO') somPowerupTurbo();
+    if (p.tipo === 'ESCUDO') somPowerupEscudo();
+    if (p.tipo === 'IMA') somPowerupIma();
+  }
+  flashPowerup(cfg.corCSS);
+  mostrarToast(`${cfg.icone} ${cfg.nome}!`, 1200);
+}
+
+// ============================================================
+// MORCEGOS — mais lentos
+// ============================================================
+function atualizarMorcegos(dt) {
+  const tempo = performance.now() / 1000;
+  morcegos.forEach((m) => {
+    if (!m.ativo) return;
+    m.faseZigueZague += dt * 3; // ⚡ zigue-zague mais devagar (era 5)
+    const dir = new THREE.Vector3().subVectors(drone.position, m.posicao);
+    const dist = dir.length();
+    if (dist > 0.1) dir.normalize();
+    const perp = new THREE.Vector3(-dir.z, 0, dir.x).normalize();
+    const zigZag = Math.sin(m.faseZigueZague) * 6;
+    dir.add(perp.multiplyScalar(zigZag / 10)).normalize();
+
+    m.velocidade.lerp(dir.multiplyScalar(m.velocidadeMax), dt * 1.5); // ⚡ aceleração mais devagar (era 2.5)
+    if (m.velocidade.length() > m.velocidadeMax) m.velocidade.setLength(m.velocidadeMax);
+
+    m.posicao.add(m.velocidade.clone().multiplyScalar(dt));
+    // Voa perto da altura do drone
+    const alturaAlvo = Math.max(alturaTerreno(m.posicao.x, m.posicao.z) + 5, drone.position.y + Math.sin(m.faseZigueZague) * 2);
+    m.posicao.y = THREE.MathUtils.lerp(m.posicao.y, alturaAlvo, dt * 1.5);
+
+    m.grupo.position.copy(m.posicao);
+    m.grupo.rotation.y = Math.atan2(dir.x, dir.z);
+
+    const batimento = Math.sin(tempo * 18) * 0.7;
+    m.asaEsq.rotation.z = batimento;
+    m.asaDir.rotation.z = -batimento;
+
+    m.tempoProximoGrito -= dt;
+    if (m.tempoProximoGrito <= 0 && dist < 30) {
+      somMorcego();
+      m.tempoProximoGrito = 2 + Math.random() * 2;
+    }
+
+    if (drone.position.distanceTo(m.posicao) < 2.0) {
+      if (!ESTADO.invulneravel && ESTADO.powerupsAtivos.ESCUDO === undefined) levarDano();
+    }
+  });
+}
+
+function atualizarFumaca(dt) {
+  particulasFumaca.forEach((p) => {
+    if (p.vida <= 0) { p.mesh.visible = false; return; }
+    p.vida -= dt;
+    p.mesh.position.add(p.velocidade.clone().multiplyScalar(dt));
+    const prog = 1 - (p.vida / p.vidaMax);
+    p.mesh.scale.setScalar(0.5 + prog * 1.5);
+    p.mesh.material.opacity = 0.3 * (1 - prog);
+    if (p.vida <= 0) p.mesh.visible = false;
+  });
+}
+function atualizarRastro(dt) {
+  rastroParticulas.forEach((p) => {
+    if (p.vida <= 0) { p.mesh.visible = false; return; }
+    p.vida -= dt;
+    const prog = 1 - (p.vida / p.vidaMax);
+    p.mesh.scale.setScalar(0.5 + prog * 1.2);
+    p.mesh.material.opacity = 0.5 * (1 - prog);
+    if (p.vida <= 0) p.mesh.visible = false;
+  });
+}
+
+function verificarColisoes(dt) {
+  if (ESTADO.invulneravel) {
+    ESTADO.tempoInvulneravel -= dt;
+    if (ESTADO.tempoInvulneravel <= 0) ESTADO.invulneravel = false;
+  }
+}
+
+function levarDano() {
+  if (ESTADO.invulneravel) return;
+  ESTADO.vidas--;
+  atualizarHUDVidas();
+  somDano();
+  flashDano();
+
+  let alvo = null, dMin = Infinity;
+  morcegos.forEach((m) => {
+    if (!m.ativo) return;
+    const d = drone.position.distanceTo(m.grupo.position);
+    if (d < dMin) { dMin = d; alvo = m; }
+  });
+  if (alvo) {
+    const fuga = new THREE.Vector3().subVectors(drone.position, alvo.grupo.position).normalize();
+    droneFisica.velocidade.add(fuga.multiplyScalar(20));
+    droneFisica.velocidade.y += 8;
+  }
+
+  ESTADO.invulneravel = true;
+  ESTADO.tempoInvulneravel = 2.0;
+  if (ESTADO.vidas <= 0) perderJogo('Os morcegos te derrotaram!');
+}
+
+// ============================================================
+// COMPLETAR / PERDER / MENU
+// ============================================================
+const telaInicial = document.getElementById('tela-inicial');
+const telaFimFase = document.getElementById('tela-fim-fase');
+const telaGameOver = document.getElementById('tela-gameover');
+
+function calcularEstrelas() {
+  const perdidas = 3 - ESTADO.vidas;
+  if (perdidas === 0) return 3;
+  if (perdidas === 1) return 2;
+  return 1;
+}
+
+function completarFase() {
+  ESTADO.rodando = false;
+  pararSomMotor();
+  somVitoria();
+  const bonus = Math.floor(ESTADO.tempoRestante) * 50;
+  ESTADO.pontos += bonus;
+  const estrelas = calcularEstrelas();
+
+  if (!PROGRESSO.fasesCompletas.includes(ESTADO.faseAtual)) PROGRESSO.fasesCompletas.push(ESTADO.faseAtual);
+  const rec = PROGRESSO.recordesPorFase[ESTADO.faseAtual] || 0;
+  if (ESTADO.pontos > rec) PROGRESSO.recordesPorFase[ESTADO.faseAtual] = ESTADO.pontos;
+  const estAnt = PROGRESSO.estrelasPorFase[ESTADO.faseAtual] || 0;
+  if (estrelas > estAnt) PROGRESSO.estrelasPorFase[ESTADO.faseAtual] = estrelas;
+  if (ESTADO.pontos > (PROGRESSO.recordeTotal || 0)) PROGRESSO.recordeTotal = ESTADO.pontos;
+  salvarProgresso();
+
+  document.getElementById('fim-titulo').textContent = `Fase ${FASES[ESTADO.faseAtual].numero} Completa!`;
+  document.getElementById('fim-subtitulo').textContent = `${ESTADO.aneisTotais} anéis de ${FASES[ESTADO.faseAtual].nome} recuperados`;
+  document.getElementById('fim-pontos').textContent = ESTADO.pontos.toLocaleString('pt-BR');
+  document.getElementById('fim-tempo').textContent = Math.floor(ESTADO.tempoRestante) + 's';
+  document.getElementById('fim-aneis').textContent = `${ESTADO.aneisColetados}/${ESTADO.aneisTotais}`;
+  document.getElementById('fim-vidas').textContent = '❤'.repeat(ESTADO.vidas) + '🖤'.repeat(3 - ESTADO.vidas);
+
+  const els = [document.getElementById('estrela-1'), document.getElementById('estrela-2'), document.getElementById('estrela-3')];
+  els.forEach(el => el.classList.remove('ganha'));
+  setTimeout(() => {
+    for (let i = 0; i < estrelas; i++) {
+      setTimeout(() => { els[i].classList.add('ganha'); tocarNota(880 + i * 220, 0.3, 'sine', 0.15); }, i * 400);
+    }
+  }, 400);
+
+  const btn = document.getElementById('btn-proxima-fase');
+  if (ESTADO.faseAtual < FASES.length - 1) {
+    btn.textContent = 'Próxima Fase ▶';
+    btn.onclick = () => iniciarFase(ESTADO.faseAtual + 1);
+  } else {
+    btn.textContent = '🏆 Jogo Completo!';
+    btn.onclick = () => voltarMenu();
+  }
+  setTimeout(() => telaFimFase.classList.add('mostrar'), 500);
+}
+
+function perderJogo(motivo) {
+  ESTADO.rodando = false;
+  pararSomMotor();
+  somGameOver();
+  document.getElementById('gameover-titulo').textContent = 'Você Foi Derrotado';
+  document.getElementById('gameover-subtitulo').textContent = motivo || 'Os morcegos dominaram o céu';
+  setTimeout(() => telaGameOver.classList.add('mostrar'), 800);
+}
+
+function voltarMenu() {
+  ESTADO.rodando = false;
+  pararSomMotor();
+  telaInicial.classList.remove('esconder');
+  telaFimFase.classList.remove('mostrar');
+  telaGameOver.classList.remove('mostrar');
+  aneis.forEach(a => { a.grupo.visible = false; });
+  powerups.forEach(p => { p.grupo.visible = false; });
+  morcegos.forEach(m => { m.grupo.visible = false; m.ativo = false; });
+  gerarCardsNiveis();
+}
+
+window.voltarMenu = voltarMenu;
+document.getElementById('btn-tentar-novamente').onclick = () => {
+  telaGameOver.classList.remove('mostrar');
+  iniciarFase(ESTADO.faseAtual);
+};
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// Inicializa
+atualizarHUDVidas(); atualizarHUDAnais(); atualizarHUDPontos(); atualizarHUDTimer();
+gerarCardsNiveis();
+aneis.forEach(a => { a.grupo.visible = false; });
+powerups.forEach(p => { p.grupo.visible = false; });
+morcegos.forEach(m => { m.grupo.visible = false; m.ativo = false; });
+aplicarBioma('FLORESTA');
+
+console.log('🦇 Drone: A Quest for the Ring — só MORCEGOS (mais lentos)');
+console.log('   Otimizações extremas para notebooks fracos');
+</script>
+
+</body>
+</html>
